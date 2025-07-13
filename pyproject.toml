@@ -1,0 +1,149 @@
+[tool.poetry]
+name = "ibirecovery"
+version = "1.0.0"
+description = "Complete toolkit for recovering photos, videos, and metadata from ibi device databases"
+authors = ["Alan Tse <alandtse@gmail.com>"]
+license = "GPL-3.0-or-later"
+readme = "README.md"
+homepage = "https://github.com/alandtse/ibiRecovery"
+repository = "https://github.com/alandtse/ibiRecovery"
+documentation = "https://alandtse.github.io/ibiRecovery/"
+packages = [{include = "ibirecovery"}]
+keywords = ["data-recovery", "photo-recovery", "ibi", "sqlite", "metadata"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Archiving :: Backup",
+    "Topic :: System :: Recovery Tools",
+    "Topic :: Multimedia :: Graphics",
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+tqdm = "^4.66.0"  # Progress bars
+pillow = {version = "^10.0.0", optional = true}  # Image metadata reading
+exifread = {version = "^3.0.0", optional = true}  # EXIF data
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+pytest-cov = "^4.1.0"
+pytest-timeout = "^2.1.0"
+black = "^23.0.0"
+isort = "^5.12.0"
+flake8 = "^6.0.0"
+flake8-docstrings = "^1.7.0"
+flake8-bugbear = "^23.0.0"
+flake8-comprehensions = "^3.14.0"
+mypy = "^1.5.0"
+bandit = {extras = ["toml"], version = "^1.7.5"}
+pydocstyle = "^6.3.0"
+pre-commit = "^3.5.0"
+
+[tool.poetry.extras]
+metadata = ["pillow", "exifread"]
+
+[tool.poetry.scripts]
+ibi-extract = "ibirecovery.extract_files:main"
+ibi-test = "run_tests:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py39']
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+# Test discovery
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Output options
+addopts = [
+    "--verbose",
+    "--tb=short",
+    "--strict-markers",
+    "--disable-warnings",
+    "--color=yes",
+    "--durations=10",
+]
+
+# Markers for test categorization
+markers = [
+    "unit: Unit tests (fast, isolated)",
+    "integration: Integration tests (slower, external dependencies)",
+    "cli: Command-line interface tests",
+    "database: Database operation tests",
+    "export: Export functionality tests",
+    "slow: Slow running tests",
+    "requires_pillow: Tests requiring PIL/Pillow library",
+]
+
+# Minimum Python version
+minversion = "3.9"
+
+# Test timeout (requires pytest-timeout)
+timeout = 300
+
+# Ignore warnings from dependencies
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+    "ignore::UserWarning:.*tqdm.*",
+]
+
+[tool.coverage.run]
+source = ["ibirecovery"]
+omit = [
+    "tests/*",
+    "*/test_*.py",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+show_missing = true
+precision = 2
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.bandit]
+exclude_dirs = ["tests", "docs"]
+skips = ["B101", "B601"]  # Skip assert statements and shell usage (common in data recovery)
+
+[tool.pydocstyle]
+convention = "google"
+add-ignore = ["D100", "D104", "D105", "D107"]  # Allow missing docstrings in some cases

@@ -1,0 +1,175 @@
+{
+  "ibi_database_api": {
+    "api_spec_version": "1.0.0",
+    "description": "API specification for ibi database recovery and parsing",
+    "database_info": {
+      "type": "SQLite 3",
+      "ibi_database_version": "166",
+      "sqlite_schema_version": "300",
+      "primary_location": "/restsdk/data/db/index.db",
+      "backup_location": "/restsdk/data/dbBackup/index.db",
+      "device_info_location": "/restsdk-info/data/db/index.db",
+      "total_tables": 37,
+      "time_period": "2017-2023"
+    },
+    "file_storage": {
+      "base_path": "/restsdk/data/files/",
+      "organization": "single_level_by_first_char",
+      "path_formula": "/files/{contentID[0]}/{contentID}",
+      "example": {
+        "contentID": "jT9JduP8vIHpwuY32gLQ",
+        "file_path": "/files/j/jT9JduP8vIHpwuY32gLQ"
+      }
+    },
+    "core_entities": {
+      "files": {
+        "table": "Files",
+        "primary_key": "id",
+        "storage_key": "contentID",
+        "required_fields": ["id", "name", "contentID", "mimeType", "size"],
+        "metadata_fields": {
+          "timestamps": ["birthTime", "cTime", "mTime", "imageDate", "videoDate"],
+          "image_exif": ["imageCameraMake", "imageCameraModel", "imageAperture", "imageExposureTime", "imageISOSpeed"],
+          "gps": ["imageLatitude", "imageLongitude", "imageAltitude", "videoLatitude", "videoLongitude"],
+          "location": ["imageCity", "imageProvince", "imageCountry", "videoCity", "videoProvince", "videoCountry"],
+          "dimensions": ["imageWidth", "imageHeight", "videoWidth", "videoHeight"]
+        },
+        "ignore_fields": ["custom", "version", "creatorEntityID"]
+      },
+      "albums": {
+        "table": "FileGroups", 
+        "primary_key": "id",
+        "required_fields": ["id", "name"],
+        "metadata_fields": ["description", "estCount", "estMinTime", "estMaxTime"],
+        "ignore_fields": ["creatorEntityID", "post", "commentsCount"]
+      },
+      "file_album_relations": {
+        "table": "FileGroupFiles",
+        "foreign_keys": {
+          "fileID": "Files.id",
+          "fileGroupID": "FileGroups.id"
+        },
+        "sort_field": "fileCTime"
+      },
+      "content_tags": {
+        "table": "FilesTags",
+        "foreign_key": "fileID",
+        "tag_field": "tag",
+        "type_field": "auto",
+        "filter": "auto = 1"
+      }
+    },
+    "ignore_tables": [
+      "SharedFiles",
+      "FilePerms", 
+      "FileGroupPerms",
+      "Entities",
+      "CloudFilesystems",
+      "CloudFilesystemFiles",
+      "DevicePerms",
+      "Reactions",
+      "Comments"
+    ],
+    "standard_queries": {
+      "all_files": {
+        "description": "Get all files with basic metadata",
+        "sql": "SELECT f.id, f.name, f.contentID, f.mimeType, f.size, f.imageDate, f.videoDate, f.cTime FROM Files f WHERE f.contentID IS NOT NULL AND f.contentID != '' ORDER BY COALESCE(f.videoDate, f.imageDate, f.cTime)"
+      },
+      "files_with_tags": {
+        "description": "Get files with their AI-generated content tags",
+        "sql": "SELECT f.name, ft.tag FROM Files f JOIN FilesTags ft ON f.id = ft.fileID WHERE ft.auto = 1 ORDER BY f.name, ft.tag"
+      },
+      "album_contents": {
+        "description": "Get all files in albums",
+        "sql": "SELECT fg.name AS album_name, f.name AS filename, f.contentID FROM FileGroups fg JOIN FileGroupFiles fgf ON fg.id = fgf.fileGroupID JOIN Files f ON fgf.fileID = f.id ORDER BY fg.name, fgf.fileCTime"
+      },
+      "gps_files": {
+        "description": "Get files with GPS coordinates",
+        "sql": "SELECT f.name, f.imageLatitude, f.imageLongitude, f.imageCity, f.imageCountry FROM Files f WHERE (f.imageLatitude IS NOT NULL AND f.imageLongitude IS NOT NULL) OR (f.videoLatitude IS NOT NULL AND f.videoLongitude IS NOT NULL)"
+      },
+      "file_statistics": {
+        "description": "Get database statistics",
+        "sql": "SELECT COUNT(*) as total_files, SUM(CASE WHEN mimeType LIKE 'image/%' THEN 1 ELSE 0 END) as images, SUM(CASE WHEN mimeType LIKE 'video/%' THEN 1 ELSE 0 END) as videos FROM Files WHERE contentID IS NOT NULL"
+      }
+    },
+    "export_formats": {
+      "lightroom_csv": {
+        "description": "Adobe Lightroom keywords import format",
+        "columns": ["Filename", "Keywords", "Caption", "Album", "GPS"],
+        "keywords_separator": "; ",
+        "gps_format": "lat,lon"
+      },
+      "digikam_csv": {
+        "description": "digiKam metadata import format", 
+        "columns": ["Name", "Tags", "Rating", "Comment", "Album", "Date", "Latitude", "Longitude", "Camera", "Location"],
+        "tags_separator": "|",
+        "hierarchical_tags": true,
+        "tag_categories": {
+          "people": ["person", "child", "baby"],
+          "places_beach": ["beach", "sea", "ocean", "oceanside"],
+          "places_architecture": ["building", "architecture"]
+        }
+      },
+      "apple_photos_csv": {
+        "description": "Apple Photos compatible format",
+        "columns": ["Filename", "Album", "Keywords", "Description", "Date", "Location"],
+        "keywords_limit": 10,
+        "date_format": "YYYY-MM-DD"
+      },
+      "xmp_sidecar": {
+        "description": "XMP sidecar files for professional software",
+        "format": "XML",
+        "namespaces": {
+          "dc": "http://purl.org/dc/elements/1.1/",
+          "xmp": "http://ns.adobe.com/xap/1.0/",
+          "lr": "http://ns.adobe.com/lightroom/1.0/"
+        },
+        "fields": {
+          "keywords": "dc:subject",
+          "description": "dc:description", 
+          "albums": "lr:hierarchicalSubject"
+        }
+      }
+    },
+    "data_quality": {
+      "typical_statistics": {
+        "total_files": "8000-9000",
+        "images": "~78% of files",
+        "videos": "~21% of files", 
+        "ai_tags": "5000+ instances",
+        "albums": "40-60 collections",
+        "gps_tagged": "varies by user"
+      },
+      "content_tags": {
+        "most_common": ["person", "child", "book", "document", "architecture", "tree", "building", "beach"],
+        "tag_count_range": "1-2692 per tag",
+        "all_auto_generated": true
+      },
+      "file_recovery_rate": {
+        "expected": "99-100%",
+        "verification": "Files mapped by contentID to physical storage"
+      }
+    },
+    "implementation_notes": {
+      "file_access": {
+        "method": "Direct file system access",
+        "permissions": "May require elevated permissions or ownership change",
+        "verification": "Check file existence before assuming availability"
+      },
+      "metadata_filtering": {
+        "include_portable": ["AI tags", "GPS data", "camera EXIF", "user albums"],
+        "exclude_ecosystem": ["auth IDs", "sharing links", "permissions", "internal hashes"]
+      },
+      "error_handling": {
+        "missing_files": "Some contentIDs may not have corresponding files",
+        "corrupted_database": "Verify database integrity before processing",
+        "permission_errors": "Handle file access gracefully"
+      }
+    },
+    "compliance": {
+      "privacy": "Remove user authentication data and sharing information",
+      "portability": "Focus on universally compatible metadata formats",
+      "standards": "Use EXIF, IPTC, and XMP standards where possible"
+    }
+  }
+}

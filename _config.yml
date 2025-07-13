@@ -1,0 +1,54 @@
+title: ibi Database Recovery Tools
+description: Complete toolkit for recovering photos, videos, and metadata from ibi device databases
+url: https://alandtse.github.io
+baseurl: /ibiRecovery
+
+theme: minima
+
+markdown: kramdown
+highlighter: rouge
+
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-github-metadata
+
+# GitHub metadata
+repository: alandtse/ibiRecovery
+
+# Navigation
+header_pages:
+  - docs/ibi_discontinuation.md
+  - docs/schema_documentation.md
+  - docs/developer_guide.md
+  - docs/metadata_strategy.md
+  - docs/metadata_embedding_guide.md
+
+# Collection for documentation
+collections:
+  docs:
+    output: true
+    permalink: /:collection/:name/
+
+# Default layouts
+defaults:
+  - scope:
+      path: "docs"
+    values:
+      layout: "page"
+      nav_order: 2
+
+# Exclude from processing
+exclude:
+  - data/
+  - personal_analysis/
+  - "*.db"
+  - "*.sqlite*"
+  - recovered_*/
+  - audit_results*
+  - metadata_exports/
+  - .gitignore
+  - Gemfile
+  - Gemfile.lock
+  - pyproject.toml
+  - poetry.lock

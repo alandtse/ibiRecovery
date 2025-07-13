@@ -1,0 +1,500 @@
+{
+  "formats": {
+    "lr_transporter_csv": {
+      "name": "LR/Transporter CSV",
+      "description": "Lightroom LR/Transporter plugin format (tab-delimited to preserve commas)",
+      "file_extension": "tsv",
+      "type": "csv",
+      "delimiter": "\t",
+      "columns": [
+        {
+          "name": "Filename",
+          "source": "file_record.name",
+          "required": true
+        },
+        {
+          "name": "Title",
+          "source": "albums",
+          "transform": "first_album_name"
+        },
+        {
+          "name": "Description",
+          "source": "file_record.description",
+          "default": ""
+        },
+        {
+          "name": "Alt Tag",
+          "source": "file_record.description",
+          "default": ""
+        },
+        {
+          "name": "Keywords", 
+          "source": "tags",
+          "filter": "auto_only",
+          "separator": ",",
+          "transform": "join_tags"
+        }
+      ]
+    },
+    "exiftool_csv": {
+      "name": "ExifTool CSV", 
+      "description": "Industry standard ExifTool format for batch metadata writing",
+      "file_extension": "csv",
+      "type": "csv",
+      "columns": [
+        {
+          "name": "SourceFile",
+          "source": "file_record.name",
+          "required": true
+        },
+        {
+          "name": "Keywords",
+          "source": "tags",
+          "filter": "auto_only", 
+          "separator": ";",
+          "transform": "join_tags"
+        },
+        {
+          "name": "Description",
+          "source": "file_record.description",
+          "default": ""
+        },
+        {
+          "name": "Creator",
+          "source": "file_record.imageCameraMake",
+          "default": ""
+        },
+        {
+          "name": "DateTimeOriginal",
+          "source": ["file_record.imageDate", "file_record.videoDate", "file_record.cTime"],
+          "transform": "exif_datetime"
+        },
+        {
+          "name": "GPSLatitude",
+          "source": ["file_record.imageLatitude", "file_record.videoLatitude"]
+        },
+        {
+          "name": "GPSLongitude",
+          "source": ["file_record.imageLongitude", "file_record.videoLongitude"]
+        }
+      ]
+    },
+    "iptc_compliant_csv": {
+      "name": "IPTC-Compliant CSV",
+      "description": "CSV with standard IPTC field names for professional use",
+      "file_extension": "csv",
+      "type": "csv",
+      "columns": [
+        {
+          "name": "Filename",
+          "source": "file_record.name",
+          "required": true
+        },
+        {
+          "name": "Object Name",
+          "source": "albums",
+          "transform": "first_album_name"
+        },
+        {
+          "name": "Caption/Description",
+          "source": "file_record.description",
+          "default": ""
+        },
+        {
+          "name": "Keywords",
+          "source": "tags",
+          "filter": "auto_only",
+          "separator": ";",
+          "transform": "join_tags"
+        },
+        {
+          "name": "Date Created",
+          "source": ["file_record.imageDate", "file_record.videoDate", "file_record.cTime"],
+          "transform": "iptc_date"
+        },
+        {
+          "name": "City",
+          "source": ["file_record.imageCity", "file_record.videoCity"]
+        },
+        {
+          "name": "Province/State",
+          "source": ["file_record.imageProvince", "file_record.videoProvince"]
+        },
+        {
+          "name": "Country",
+          "source": ["file_record.imageCountry", "file_record.videoCountry"]
+        }
+      ]
+    },
+    "photoprism_csv": {
+      "name": "PhotoPrism CSV",
+      "description": "CSV format for PhotoPrism import with WebDAV support",
+      "file_extension": "csv",
+      "type": "csv",
+      "columns": [
+        {
+          "name": "FileName",
+          "source": "file_record.name",
+          "required": true
+        },
+        {
+          "name": "Title",
+          "source": "albums",
+          "transform": "first_album_name"
+        },
+        {
+          "name": "Description",
+          "source": "file_record.description",
+          "default": ""
+        },
+        {
+          "name": "Keywords",
+          "source": "tags",
+          "filter": "auto_only",
+          "separator": ", ",
+          "transform": "join_tags"
+        },
+        {
+          "name": "Lat",
+          "source": ["file_record.imageLatitude", "file_record.videoLatitude"]
+        },
+        {
+          "name": "Lng",
+          "source": ["file_record.imageLongitude", "file_record.videoLongitude"]
+        },
+        {
+          "name": "TakenAt",
+          "source": ["file_record.imageDate", "file_record.videoDate", "file_record.cTime"],
+          "transform": "iso_date"
+        }
+      ]
+    },
+    "apple_photos_csv": {
+      "name": "Apple Photos CSV",
+      "description": "Simple CSV format compatible with Apple Photos import tools",
+      "file_extension": "csv",
+      "type": "csv",
+      "columns": [
+        {
+          "name": "Filename",
+          "source": "file_record.name",
+          "required": true
+        },
+        {
+          "name": "Keywords",
+          "source": "tags",
+          "filter": "auto_only",
+          "separator": ", ",
+          "transform": "join_tags"
+        },
+        {
+          "name": "Description",
+          "source": "file_record.description",
+          "default": ""
+        },
+        {
+          "name": "Date",
+          "source": ["file_record.imageDate", "file_record.videoDate", "file_record.cTime"],
+          "transform": "iso_date"
+        }
+      ]
+    },
+    "google_takeout_json": {
+      "name": "Google Takeout JSON",
+      "description": "JSON format compatible with Google Photos Takeout structure",
+      "file_extension": "json",
+      "type": "json",
+      "structure": {
+        "files": {
+          "source": "files_array",
+          "fields": {
+            "filename": "file_record.name",
+            "title": {
+              "source": "albums",
+              "transform": "first_album_name"
+            },
+            "description": "file_record.description",
+            "creationTime": {
+              "source": ["file_record.imageDate", "file_record.videoDate", "file_record.cTime"],
+              "transform": "google_timestamp"
+            },
+            "geoData": {
+              "latitude": {
+                "source": ["file_record.imageLatitude", "file_record.videoLatitude"]
+              },
+              "longitude": {
+                "source": ["file_record.imageLongitude", "file_record.videoLongitude"]
+              }
+            },
+            "tags": {
+              "source": "tags",
+              "filter": "auto_only",
+              "transform": "tag_array"
+            }
+          }
+        }
+      }
+    },
+    "jellyfin_nfo": {
+      "name": "Jellyfin NFO Files",
+      "description": "NFO metadata files for Jellyfin video management",
+      "file_extension": "nfo",
+      "type": "xml",
+      "per_file": true,
+      "template": "jellyfin_nfo_template.xml",
+      "mappings": {
+        "title": {
+          "source": "albums",
+          "transform": "first_album_name"
+        },
+        "plot": {
+          "source": "file_record.description"
+        },
+        "tag": {
+          "source": "tags",
+          "filter": "auto_only",
+          "transform": "tag_array"
+        },
+        "dateadded": {
+          "source": ["file_record.imageDate", "file_record.videoDate", "file_record.cTime"],
+          "transform": "iso_datetime"
+        }
+      }
+    },
+    "plex_csv": {
+      "name": "Plex Library CSV",
+      "description": "CSV format for Plex metadata import/export tools",
+      "file_extension": "csv",
+      "type": "csv",
+      "columns": [
+        {
+          "name": "Title",
+          "source": "file_record.name",
+          "required": true
+        },
+        {
+          "name": "Year",
+          "source": ["file_record.imageDate", "file_record.videoDate", "file_record.cTime"],
+          "transform": "extract_year"
+        },
+        {
+          "name": "Summary",
+          "source": "file_record.description",
+          "default": ""
+        },
+        {
+          "name": "Tags",
+          "source": "tags",
+          "filter": "auto_only",
+          "separator": "|",
+          "transform": "join_tags"
+        },
+        {
+          "name": "Collection",
+          "source": "albums",
+          "transform": "first_album_name"
+        },
+        {
+          "name": "File Path",
+          "source": "file_record.name"
+        }
+      ]
+    },
+    "iptc_video_csv": {
+      "name": "IPTC Video Metadata CSV",
+      "description": "Professional video metadata standard (IPTC Video Metadata Hub)",
+      "file_extension": "csv",
+      "type": "csv",
+      "columns": [
+        {
+          "name": "Filename",
+          "source": "file_record.name",
+          "required": true
+        },
+        {
+          "name": "Title",
+          "source": "albums",
+          "transform": "first_album_name"
+        },
+        {
+          "name": "Description", 
+          "source": "file_record.description",
+          "default": ""
+        },
+        {
+          "name": "Keywords",
+          "source": "tags",
+          "filter": "auto_only",
+          "separator": ";",
+          "transform": "join_tags"
+        },
+        {
+          "name": "Date Created",
+          "source": ["file_record.videoDate", "file_record.imageDate", "file_record.cTime"],
+          "transform": "iptc_date"
+        },
+        {
+          "name": "Duration",
+          "source": "file_record.videoDuration",
+          "default": ""
+        },
+        {
+          "name": "Location Created",
+          "source": ["file_record.videoCity", "file_record.imageCity"]
+        },
+        {
+          "name": "GPS Latitude",
+          "source": ["file_record.videoLatitude", "file_record.imageLatitude"]
+        },
+        {
+          "name": "GPS Longitude",
+          "source": ["file_record.videoLongitude", "file_record.imageLongitude"]
+        }
+      ]
+    },
+    "video_exiftool_csv": {
+      "name": "Video ExifTool CSV",
+      "description": "ExifTool format optimized for video files (MOV/MP4)",
+      "file_extension": "csv", 
+      "type": "csv",
+      "columns": [
+        {
+          "name": "SourceFile",
+          "source": "file_record.name",
+          "required": true
+        },
+        {
+          "name": "Title",
+          "source": "albums",
+          "transform": "first_album_name"
+        },
+        {
+          "name": "Description",
+          "source": "file_record.description",
+          "default": ""
+        },
+        {
+          "name": "Keywords",
+          "source": "tags",
+          "filter": "auto_only",
+          "separator": ";",
+          "transform": "join_tags"
+        },
+        {
+          "name": "CreateDate",
+          "source": ["file_record.videoDate", "file_record.imageDate", "file_record.cTime"],
+          "transform": "exif_datetime"
+        },
+        {
+          "name": "Duration",
+          "source": "file_record.videoDuration",
+          "default": ""
+        },
+        {
+          "name": "GPSLatitude",
+          "source": ["file_record.videoLatitude", "file_record.imageLatitude"]
+        },
+        {
+          "name": "GPSLongitude", 
+          "source": ["file_record.videoLongitude", "file_record.imageLongitude"]
+        },
+        {
+          "name": "Make",
+          "source": "file_record.videoCameraMake",
+          "default": ""
+        },
+        {
+          "name": "Model", 
+          "source": "file_record.videoCameraModel",
+          "default": ""
+        }
+      ]
+    },
+    "xmp_sidecar": {
+      "name": "XMP Sidecar Files",
+      "description": "Industry standard XMP metadata files",
+      "file_extension": "xmp",
+      "type": "xml",
+      "template": "xmp_template.xml",
+      "per_file": true,
+      "mappings": {
+        "dc:subject": {
+          "source": "tags",
+          "filter": "auto_only",
+          "transform": "xmp_bag"
+        },
+        "dc:description": {
+          "source": "file_record.description",
+          "transform": "xmp_alt"
+        },
+        "exif:GPS": {
+          "source": ["file_record.imageLatitude", "file_record.imageLongitude", "file_record.videoLatitude", "file_record.videoLongitude"],
+          "transform": "xmp_gps"
+        }
+      }
+    },
+    "json_metadata": {
+      "name": "JSON Metadata",
+      "description": "Modern JSON format for API integration",
+      "file_extension": "json",
+      "type": "json",
+      "structure": {
+        "metadata": {
+          "total_files": "stats.total_files",
+          "export_date": "current_datetime"
+        },
+        "files": {
+          "source": "files_array",
+          "fields": {
+            "filename": "file_record.name",
+            "keywords": {
+              "source": "tags",
+              "filter": "auto_only",
+              "transform": "tag_array"
+            },
+            "albums": {
+              "source": "albums", 
+              "transform": "album_array"
+            },
+            "gps": {
+              "source": ["file_record.imageLatitude", "file_record.imageLongitude", "file_record.videoLatitude", "file_record.videoLongitude"],
+              "transform": "gps_object"
+            },
+            "camera": {
+              "make": "file_record.imageCameraMake",
+              "model": "file_record.imageCameraModel"
+            },
+            "dates": {
+              "image": "file_record.imageDate",
+              "video": "file_record.videoDate", 
+              "created": "file_record.cTime"
+            }
+          }
+        }
+      }
+    }
+  },
+  "transforms": {
+    "join_tags": "Join tag values with specified separator",
+    "first_album_name": "Get name of first album",
+    "gps_coordinates": "Format as 'lat,lon' or empty string",
+    "hierarchical_tags": "Convert tags to hierarchical format (People/person, Objects/chair)",
+    "iso_date": "Convert to ISO 8601 date format (YYYY-MM-DD)",
+    "iptc_date": "Convert to IPTC date format (YYYYMMDD)",
+    "exif_datetime": "Convert to EXIF datetime format (YYYY:MM:DD HH:MM:SS)",
+    "google_timestamp": "Convert to Google Photos timestamp format",
+    "iso_datetime": "Convert to ISO 8601 datetime format (YYYY-MM-DDTHH:MM:SS)",
+    "extract_year": "Extract year from date (YYYY)",
+    "xmp_bag": "Convert to XMP rdf:Bag format",
+    "xmp_alt": "Convert to XMP rdf:Alt format",
+    "xmp_gps": "Convert to XMP GPS format",
+    "tag_array": "Convert tags to JSON array",
+    "album_array": "Convert albums to JSON array",
+    "gps_object": "Convert to GPS object {lat, lon}"
+  },
+  "filters": {
+    "auto_only": "Include only AI-generated tags (auto=1)",
+    "manual_only": "Include only manual tags (auto=0)",
+    "all": "Include all tags"
+  }
+}
