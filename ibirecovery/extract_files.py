@@ -221,7 +221,9 @@ def copy_file_rsync(
         return False
 
 
-def set_file_metadata(dest: Path, file_metadata: Dict[str, Any]) -> bool:
+def set_file_metadata(
+    dest: Path, file_metadata: Dict[str, Any], track_corrections: bool = False
+) -> bool:
     """
     Set file timestamps based on database metadata.
 
@@ -518,9 +520,15 @@ def copy_file_with_dedup(
         # Ensure destination directory exists
         dest.parent.mkdir(parents=True, exist_ok=True)
 
-        # Generate content identifier based on source file properties
+        # Get source file stats - needed for both deduplication and copy operations
         source_stat = source.stat()
-        content_key = f"{source}:{source_stat.st_size}:{source_stat.st_mtime}"
+
+        # Generate content identifier - prefer database content_id if available in metadata
+        if file_metadata and "contentID" in file_metadata:
+            content_key = file_metadata["contentID"]
+        else:
+            # Fallback to source file properties for non-database files
+            content_key = f"{source}:{source_stat.st_size}:{source_stat.st_mtime}"
 
         # Check if we've already copied this exact file
         if content_key in copy_tracker:
@@ -939,6 +947,82 @@ def comprehensive_audit(
     }
 
 
+def analyze_deduplication_potential(
+    files_with_albums: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """Analyze deduplication potential by finding files with same content_id."""
+    from collections import Counter, defaultdict
+
+    content_id_counts = Counter()
+    content_id_files = defaultdict(list)
+    total_files = 0
+    total_size = 0
+
+    # Count content_id occurrences
+    for item in files_with_albums:
+        file_record = item["file"]
+        content_id = file_record.get("contentID")
+        if content_id:
+            content_id_counts[content_id] += 1
+            content_id_files[content_id].append(file_record)
+            total_files += 1
+            total_size += file_record.get("size", 0)
+
+    # Find duplicates
+    duplicates = {cid: count for cid, count in content_id_counts.items() if count > 1}
+    duplicate_files = sum(count for count in duplicates.values())
+    unique_files = len(content_id_counts)
+    space_saveable = sum(
+        (count - 1) * content_id_files[cid][0].get("size", 0)
+        for cid, count in duplicates.items()
+    )
+
+    # Calculate potential deduplication rate
+    dedup_rate = (
+        ((duplicate_files - len(duplicates)) / total_files * 100)
+        if total_files > 0
+        else 0
+    )
+    space_save_rate = (space_saveable / total_size * 100) if total_size > 0 else 0
+
+    print(f"\n📊 DEDUPLICATION ANALYSIS:")
+    print(f"   Total file entries in albums: {total_files}")
+    print(f"   Unique content files: {unique_files}")
+    print(f"   Duplicate content_ids: {len(duplicates)}")
+    print(f"   Total duplicate entries: {duplicate_files - len(duplicates)}")
+    print(f"   Potential deduplication rate: {dedup_rate:.1f}%")
+    print(
+        f"   Potential space savings: {format_size(space_saveable)} ({space_save_rate:.1f}%)"
+    )
+
+    if duplicates:
+        print(f"\n📋 TOP DUPLICATED FILES:")
+        # Show top 10 most duplicated files
+        top_duplicates = sorted(duplicates.items(), key=lambda x: x[1], reverse=True)[
+            :10
+        ]
+        for content_id, count in top_duplicates:
+            sample_file = content_id_files[content_id][0]
+            size = sample_file.get("size", 0)
+            name = sample_file.get("name", "Unknown")
+            print(
+                f"   {name}: {count} copies, {format_size(size)} each, saves {format_size((count-1)*size)}"
+            )
+
+    return {
+        "total_files": total_files,
+        "unique_files": unique_files,
+        "duplicate_content_ids": len(duplicates),
+        "duplicate_entries": duplicate_files - len(duplicates),
+        "deduplication_rate": dedup_rate,
+        "space_saveable": space_saveable,
+        "space_save_rate": space_save_rate,
+        "top_duplicates": dict(
+            sorted(duplicates.items(), key=lambda x: x[1], reverse=True)[:20]
+        ),
+    }
+
+
 def verify_file_availability(
     files_with_albums: List[Dict[str, Any]],
     files_dir: Path,
@@ -975,6 +1059,8 @@ def verify_file_availability(
 
     # For comprehensive audit, we need additional tracking
     if is_comprehensive:
+        # Also analyze deduplication potential during comprehensive audit
+        analyze_deduplication_potential(files_with_albums)
         return comprehensive_audit(files_with_albums, files_dir, audit_report_dir)
 
     # Continue with existing quick verification logic for samples

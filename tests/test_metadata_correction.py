@@ -523,3 +523,60 @@ class TestMetadataStructureCompatibility:
         file_stat = test_file.stat()
         expected_timestamp = 1673995478.0  # Seconds since epoch
         assert abs(file_stat.st_mtime - expected_timestamp) < 1.0
+
+    def test_deduplication_uses_content_id(self, temp_dir):
+        """Test that deduplication uses content_id instead of source path."""
+        # Create two different source files (different paths) but same content_id
+        source1 = temp_dir / "album1" / "image.jpg"
+        source2 = temp_dir / "album2" / "image.jpg"  # Same filename, different path
+        dest1 = temp_dir / "dest1" / "image.jpg"
+        dest2 = temp_dir / "dest2" / "image.jpg"
+
+        source1.parent.mkdir(parents=True)
+        source2.parent.mkdir(parents=True)
+        dest1.parent.mkdir(parents=True)
+        dest2.parent.mkdir(parents=True)
+
+        # Create identical file content
+        content = "fake image content"
+        source1.write_text(content)
+        source2.write_text(content)
+
+        # Metadata with same content_id (this is the key for deduplication)
+        file_metadata = {
+            "contentID": "ABC123SAME",  # Same content_id for both files
+            "mimeType": "image/jpeg",
+            "imageDate": 1640962800.0,
+        }
+
+        copy_tracker = {}
+
+        # First copy should be regular copy
+        success1, action1 = copy_file_with_dedup(
+            source1,
+            dest1,
+            resume=False,
+            copy_tracker=copy_tracker,
+            file_metadata=file_metadata,
+        )
+        assert success1 is True
+        assert action1 == "copied"
+        assert dest1.exists()
+
+        # Second copy should be deduplicated (hardlinked) because same content_id
+        success2, action2 = copy_file_with_dedup(
+            source2,
+            dest2,
+            resume=False,
+            copy_tracker=copy_tracker,
+            file_metadata=file_metadata,
+        )
+        assert success2 is True
+        assert action2 == "hardlinked"
+        assert dest2.exists()
+
+        # Verify hardlink was created (same inode)
+        assert dest1.stat().st_ino == dest2.stat().st_ino
+
+        # Verify content_id is in tracker
+        assert "ABC123SAME" in copy_tracker
