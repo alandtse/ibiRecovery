@@ -730,7 +730,13 @@ def comprehensive_audit(
 
     # Build database files dict
     db_files = {}
-    for file_record in files_with_albums:
+    for item in files_with_albums:
+        # Handle both flat format and nested format from get_all_files_with_albums
+        if "file" in item:
+            file_record = item["file"]
+        else:
+            file_record = item
+
         content_id = file_record.get("contentID")
         if content_id:
             db_files[content_id] = file_record
@@ -2518,10 +2524,13 @@ Advanced options:
         and not args.verify
         and not args.verify_metadata
         and not args.export
+        and not args.list_only
+        and not args.stats
+        and not args.deduplicate_existing
         and not args.output_dir
     ):
         parser.error(
-            "output_dir is required unless using --verify, --verify-metadata, or --export"
+            "output_dir is required unless using --verify, --verify-metadata, --export, --list-only, --stats, or --deduplicate-existing"
         )
 
     # Set default export directory
@@ -2530,6 +2539,10 @@ Advanced options:
 
     ibi_root = Path(args.ibi_root) if args.ibi_root else None
     output_dir = Path(args.output_dir) if args.output_dir else None
+
+    # For list-only mode, provide a dummy output_dir since paths are needed but not used
+    if args.list_only and output_dir is None:
+        output_dir = Path("/tmp/dummy")
 
     if ibi_root and not ibi_root.exists():
         print(f"❌ ibi root directory not found: {ibi_root}")

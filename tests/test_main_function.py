@@ -193,8 +193,11 @@ class TestMainFunction:
             ["extract_files.py", "--deduplicate-existing", str(existing_dir)],
         ):
             with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
-                main()
+                with pytest.raises(SystemExit) as exc_info:
+                    main()
 
+                # Should exit with code 0 (success)
+                assert exc_info.value.code == 0
                 output = mock_stdout.getvalue()
                 # Should show deduplication results
                 assert any(
@@ -453,7 +456,6 @@ class TestMainFunctionIntegration:
         argv = [
             "extract_files.py",
             ibi_root,
-            "--output",
             output_dir,
             "--export",
             "--export-dir",
