@@ -252,11 +252,32 @@ def set_file_metadata(dest: Path, file_metadata: Dict[str, Any]) -> bool:
             )
 
         if target_timestamp:
+            # Validate timestamp is within reasonable bounds for the platform
+            # Most platforms support timestamps between 1970 and ~2038 (32-bit)
+            # or 1970 and ~2147483647 seconds after epoch (64-bit)
+            # We'll be more conservative and support 1900-2100 range
+            min_timestamp = -2208988800  # 1900-01-01
+            max_timestamp = 4102444800  # 2100-01-01
+
+            # Check for invalid values (NaN, infinity, extreme values)
+            if (
+                not isinstance(target_timestamp, (int, float))
+                or target_timestamp != target_timestamp  # NaN check
+                or target_timestamp == float("inf")
+                or target_timestamp == float("-inf")
+                or target_timestamp < min_timestamp
+                or target_timestamp > max_timestamp
+            ):
+                print(
+                    f"Warning: Invalid timestamp {target_timestamp} for {dest}, skipping metadata correction"
+                )
+                return False
+
             # Set both access and modification times to the target timestamp
             os.utime(dest, (target_timestamp, target_timestamp))
             return True
 
-    except (OSError, TypeError, ValueError) as e:
+    except (OSError, TypeError, ValueError, OverflowError) as e:
         # Don't fail the whole copy operation for metadata issues
         print(f"Warning: Could not set metadata for {dest}: {e}")
 

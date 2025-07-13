@@ -387,3 +387,91 @@ class TestMetadataStructureCompatibility:
         set_file_metadata(video_file, video_metadata)
         video_stat = video_file.stat()
         assert abs(video_stat.st_mtime - 1640995300.0) < 1.0
+
+    def test_timestamp_overflow_error(self, temp_dir):
+        """Test that timestamp overflow errors are handled gracefully."""
+        test_file = temp_dir / "test_overflow.jpg"
+        test_file.write_text("fake content")
+
+        # Store original timestamp for comparison
+        original_stat = test_file.stat()
+        original_mtime = original_stat.st_mtime
+
+        # Test with extremely large timestamp that causes OverflowError
+        # This simulates the real-world bug from the error report
+        file_metadata = {
+            "mimeType": "image/jpeg",
+            "imageDate": 9999999999999999999,  # Way beyond platform limits
+            "videoDate": None,
+            "cTime": None,
+            "birthTime": None,
+        }
+
+        # Should return False but not crash
+        result = set_file_metadata(test_file, file_metadata)
+        assert result is False
+
+        # File should still exist and timestamp should be unchanged
+        assert test_file.exists()
+        current_stat = test_file.stat()
+        # Timestamp should be unchanged (within a small tolerance for file system precision)
+        assert abs(current_stat.st_mtime - original_mtime) < 1.0
+
+    def test_timestamp_negative_overflow(self, temp_dir):
+        """Test handling of negative timestamps that might cause overflow."""
+        test_file = temp_dir / "test_negative.jpg"
+        test_file.write_text("fake content")
+
+        original_stat = test_file.stat()
+        original_mtime = original_stat.st_mtime
+
+        # Test with extremely negative timestamp
+        file_metadata = {
+            "mimeType": "image/jpeg",
+            "imageDate": -9999999999999999999,  # Extremely negative
+            "videoDate": None,
+            "cTime": None,
+            "birthTime": None,
+        }
+
+        # Should return False but not crash
+        result = set_file_metadata(test_file, file_metadata)
+        assert result is False
+
+        # File should still exist and timestamp should be unchanged
+        assert test_file.exists()
+        current_stat = test_file.stat()
+        assert abs(current_stat.st_mtime - original_mtime) < 1.0
+
+    def test_timestamp_platform_limits(self, temp_dir):
+        """Test edge cases around platform timestamp limits."""
+        test_file = temp_dir / "test_limits.jpg"
+        test_file.write_text("fake content")
+
+        # Test with various problematic timestamps
+        problematic_timestamps = [
+            float("inf"),  # Infinity
+            float("-inf"),  # Negative infinity
+            float("nan"),  # NaN
+            2**63,  # Likely beyond many platform limits
+            -(2**63),  # Large negative number
+        ]
+
+        for bad_timestamp in problematic_timestamps:
+            original_stat = test_file.stat()
+            original_mtime = original_stat.st_mtime
+
+            file_metadata = {
+                "mimeType": "image/jpeg",
+                "imageDate": bad_timestamp,
+                "videoDate": None,
+                "cTime": None,
+                "birthTime": None,
+            }
+
+            # Should handle gracefully without crashing
+            result = set_file_metadata(test_file, file_metadata)
+            assert result is False
+
+            # File should still exist
+            assert test_file.exists()
