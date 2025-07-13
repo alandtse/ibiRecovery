@@ -252,6 +252,23 @@ def set_file_metadata(dest: Path, file_metadata: Dict[str, Any]) -> bool:
             )
 
         if target_timestamp:
+            # Convert timestamp to seconds if it appears to be in milliseconds or microseconds
+            # Many databases store timestamps in milliseconds (13 digits) or microseconds (16 digits)
+            if isinstance(target_timestamp, (int, float)):
+                # Detect milliseconds: timestamps > year 2200 in seconds (7258118400)
+                # but reasonable when divided by 1000 (years 1970-2100)
+                if target_timestamp > 7258118400:  # Year 2200 in seconds
+                    if target_timestamp < 4102444800000:  # Year 2100 in milliseconds
+                        target_timestamp = (
+                            target_timestamp / 1000.0
+                        )  # Convert ms to seconds
+                    elif (
+                        target_timestamp < 4102444800000000
+                    ):  # Year 2100 in microseconds
+                        target_timestamp = (
+                            target_timestamp / 1000000.0
+                        )  # Convert μs to seconds
+
             # Validate timestamp is within reasonable bounds for the platform
             # Most platforms support timestamps between 1970 and ~2038 (32-bit)
             # or 1970 and ~2147483647 seconds after epoch (64-bit)

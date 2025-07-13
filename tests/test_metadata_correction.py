@@ -475,3 +475,51 @@ class TestMetadataStructureCompatibility:
 
             # File should still exist
             assert test_file.exists()
+
+    def test_timestamp_milliseconds_conversion(self, temp_dir):
+        """Test that millisecond timestamps are properly converted to seconds."""
+        test_file = temp_dir / "test_milliseconds.jpg"
+        test_file.write_text("fake content")
+
+        # Test with millisecond timestamp (like the ones from the user's error)
+        # 1673995478000 ms = 1673995478 s = 2023-01-17 21:04:38 UTC
+        file_metadata = {
+            "mimeType": "image/jpeg",
+            "imageDate": 1673995478000,  # Milliseconds since epoch
+            "videoDate": None,
+            "cTime": None,
+            "birthTime": None,
+        }
+
+        # Should convert and succeed
+        result = set_file_metadata(test_file, file_metadata)
+        assert result is True
+
+        # Verify the timestamp was set correctly (converted to seconds)
+        file_stat = test_file.stat()
+        expected_timestamp = 1673995478.0  # Seconds since epoch
+        assert abs(file_stat.st_mtime - expected_timestamp) < 1.0
+
+    def test_timestamp_microseconds_conversion(self, temp_dir):
+        """Test that microsecond timestamps are properly converted to seconds."""
+        test_file = temp_dir / "test_microseconds.jpg"
+        test_file.write_text("fake content")
+
+        # Test with microsecond timestamp
+        # 1673995478000000 μs = 1673995478 s = 2023-01-17 21:04:38 UTC
+        file_metadata = {
+            "mimeType": "image/jpeg",
+            "imageDate": 1673995478000000,  # Microseconds since epoch
+            "videoDate": None,
+            "cTime": None,
+            "birthTime": None,
+        }
+
+        # Should convert and succeed
+        result = set_file_metadata(test_file, file_metadata)
+        assert result is True
+
+        # Verify the timestamp was set correctly (converted to seconds)
+        file_stat = test_file.stat()
+        expected_timestamp = 1673995478.0  # Seconds since epoch
+        assert abs(file_stat.st_mtime - expected_timestamp) < 1.0
