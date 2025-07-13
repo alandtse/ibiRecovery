@@ -1,0 +1,65 @@
+[tool.poetry]
+name = "ibirecovery"
+version = "1.0.0"
+description = "Complete toolkit for recovering photos, videos, and metadata from ibi device databases"
+authors = ["Alan Tse <alandtse@gmail.com>"]
+license = "GPL-3.0-or-later"
+readme = "README.md"
+homepage = "https://github.com/alandtse/ibiRecovery"
+repository = "https://github.com/alandtse/ibiRecovery"
+documentation = "https://alandtse.github.io/ibiRecovery/"
+packages = [{include = "ibirecovery"}]
+keywords = ["data-recovery", "photo-recovery", "ibi", "sqlite", "metadata"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Archiving :: Backup",
+    "Topic :: System :: Recovery Tools",
+    "Topic :: Multimedia :: Graphics",
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+tqdm = "^4.66.0"  # Progress bars
+pillow = {version = "^10.0.0", optional = true}  # Image metadata reading
+exifread = {version = "^3.0.0", optional = true}  # EXIF data
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+black = "^23.0.0"
+isort = "^5.12.0"
+flake8 = "^6.0.0"
+mypy = "^1.5.0"
+
+[tool.poetry.extras]
+metadata = ["pillow", "exifread"]
+
+[tool.poetry.scripts]
+ibi-extract = "ibirecovery.extract_files:main"
+ibi-audit = "ibirecovery.audit_files:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true

@@ -1,0 +1,69 @@
+# Personal Analysis & Recovery Data
+pi/                           # Local mounted recovery data - NEVER COMMIT
+*.db                           # Local database files
+*.sqlite
+*.sqlite3
+personal_analysis/             # Your personal analysis files
+recovered_*/                   # Any extracted files from recovery
+audit_results*/               # Personal audit results
+complete_audit.json           # Personal audit data
+query.sql                     # Temporary query files
+
+# Sensitive Data
+*.json                        # Could contain personal metadata
+audit_results.json
+metadata_exports/
+recovered_complete/
+recovered_albums/
+recovered_files/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Environment
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
