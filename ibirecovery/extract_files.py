@@ -33,6 +33,32 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+# Import from core modules for modular functionality
+try:
+    from .core import MetadataExporter as CoreMetadataExporter
+    from .core import check_rsync_available as core_check_rsync_available
+    from .core import comprehensive_audit as core_comprehensive_audit
+    from .core import connect_db as core_connect_db
+    from .core import copy_file_fallback as core_copy_file_fallback
+    from .core import copy_file_rsync as core_copy_file_rsync
+    from .core import detect_ibi_structure as core_detect_ibi_structure
+    from .core import export_metadata_formats as core_export_metadata_formats
+    from .core import find_source_file as core_find_source_file
+    from .core import format_size as core_format_size
+    from .core import get_all_files_with_albums as core_get_all_files_with_albums
+    from .core import get_best_timestamp as core_get_best_timestamp
+    from .core import (
+        get_comprehensive_export_data as core_get_comprehensive_export_data,
+    )
+    from .core import get_time_organized_path as core_get_time_organized_path
+    from .core import scan_files_directory as core_scan_files_directory
+    from .core import set_file_metadata as core_set_file_metadata
+    from .core import verify_file_availability as core_verify_file_availability
+
+    CORE_MODULES_AVAILABLE = True
+except ImportError:
+    CORE_MODULES_AVAILABLE = False
+
 # Optional dependencies with graceful fallback
 try:
     from tqdm import tqdm
@@ -146,6 +172,10 @@ def detect_ibi_structure(root_path: Path) -> Tuple[Optional[Path], Optional[Path
     Returns:
         Tuple of (db_path, files_path) or (None, None) if not found
     """
+    if CORE_MODULES_AVAILABLE:
+        return core_detect_ibi_structure(root_path)
+
+    # Fallback implementation
     root_path = Path(root_path)
 
     # Common ibi directory structures to check
