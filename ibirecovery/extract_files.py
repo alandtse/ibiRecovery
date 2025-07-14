@@ -221,6 +221,87 @@ def copy_file_rsync(
         return False
 
 
+def get_best_timestamp(file_metadata: Dict[str, Any]) -> Optional[float]:
+    """
+    Extract the best available timestamp from file metadata.
+
+    Args:
+        file_metadata: Dictionary containing metadata fields from database
+
+    Returns:
+        Timestamp in seconds since epoch, or None if no timestamp available
+    """
+    target_timestamp = None
+
+    # For images, prefer imageDate
+    if file_metadata.get("mimeType", "").startswith("image/"):
+        target_timestamp = file_metadata.get("imageDate")
+
+    # For videos, prefer videoDate
+    elif file_metadata.get("mimeType", "").startswith("video/"):
+        target_timestamp = file_metadata.get("videoDate")
+
+    # Fall back to cTime, then birthTime
+    if not target_timestamp:
+        target_timestamp = file_metadata.get("cTime") or file_metadata.get("birthTime")
+
+    if target_timestamp:
+        # Convert timestamp to seconds if it appears to be in milliseconds or microseconds
+        if isinstance(target_timestamp, (int, float)):
+            # Detect milliseconds: timestamps > year 2200 in seconds (7258118400)
+            if target_timestamp > 7258118400:  # Year 2200 in seconds
+                if target_timestamp < 4102444800000:  # Year 2100 in milliseconds
+                    target_timestamp = (
+                        target_timestamp / 1000.0
+                    )  # Convert ms to seconds
+                elif target_timestamp < 4102444800000000:  # Year 2100 in microseconds
+                    target_timestamp = (
+                        target_timestamp / 1000000.0
+                    )  # Convert μs to seconds
+
+            # Validate timestamp is within reasonable bounds
+            min_timestamp = -2208988800  # 1900-01-01
+            max_timestamp = 4102444800  # 2100-01-01
+
+            # Check for invalid values (NaN, infinity, extreme values)
+            if (
+                isinstance(target_timestamp, (int, float))
+                and target_timestamp == target_timestamp  # NaN check
+                and min_timestamp <= target_timestamp <= max_timestamp
+            ):
+                return target_timestamp
+
+    return None
+
+
+def get_time_organized_path(
+    base_dir: Path, filename: str, file_metadata: Dict[str, Any]
+) -> Path:
+    """
+    Get the time-organized path for a file within the base directory.
+
+    Args:
+        base_dir: Base directory for organization
+        filename: Original filename
+        file_metadata: File metadata dictionary
+
+    Returns:
+        Path organized as base_dir/YYYY/MM/filename
+    """
+    timestamp = get_best_timestamp(file_metadata)
+
+    if timestamp:
+        # Organize by year/month
+        date_obj = datetime.fromtimestamp(timestamp)
+        year_dir = base_dir / str(date_obj.year)
+        month_dir = year_dir / f"{date_obj.month:02d}"
+        return month_dir / filename
+    else:
+        # Fallback: put in a "Unknown_Date" subdirectory
+        unknown_dir = base_dir / "Unknown_Date"
+        return unknown_dir / filename
+
+
 def set_file_metadata(
     dest: Path, file_metadata: Dict[str, Any], track_corrections: bool = False
 ) -> bool:
@@ -235,63 +316,9 @@ def set_file_metadata(
         True if successful, False otherwise
     """
     try:
-        # Extract timestamps from database metadata
-        # Priority: imageDate/videoDate > cTime > birthTime > modifiedTime
-        target_timestamp = None
-
-        # For images, prefer imageDate
-        if file_metadata.get("mimeType", "").startswith("image/"):
-            target_timestamp = file_metadata.get("imageDate")
-
-        # For videos, prefer videoDate
-        elif file_metadata.get("mimeType", "").startswith("video/"):
-            target_timestamp = file_metadata.get("videoDate")
-
-        # Fall back to cTime, then birthTime
-        if not target_timestamp:
-            target_timestamp = file_metadata.get("cTime") or file_metadata.get(
-                "birthTime"
-            )
+        target_timestamp = get_best_timestamp(file_metadata)
 
         if target_timestamp:
-            # Convert timestamp to seconds if it appears to be in milliseconds or microseconds
-            # Many databases store timestamps in milliseconds (13 digits) or microseconds (16 digits)
-            if isinstance(target_timestamp, (int, float)):
-                # Detect milliseconds: timestamps > year 2200 in seconds (7258118400)
-                # but reasonable when divided by 1000 (years 1970-2100)
-                if target_timestamp > 7258118400:  # Year 2200 in seconds
-                    if target_timestamp < 4102444800000:  # Year 2100 in milliseconds
-                        target_timestamp = (
-                            target_timestamp / 1000.0
-                        )  # Convert ms to seconds
-                    elif (
-                        target_timestamp < 4102444800000000
-                    ):  # Year 2100 in microseconds
-                        target_timestamp = (
-                            target_timestamp / 1000000.0
-                        )  # Convert μs to seconds
-
-            # Validate timestamp is within reasonable bounds for the platform
-            # Most platforms support timestamps between 1970 and ~2038 (32-bit)
-            # or 1970 and ~2147483647 seconds after epoch (64-bit)
-            # We'll be more conservative and support 1900-2100 range
-            min_timestamp = -2208988800  # 1900-01-01
-            max_timestamp = 4102444800  # 2100-01-01
-
-            # Check for invalid values (NaN, infinity, extreme values)
-            if (
-                not isinstance(target_timestamp, (int, float))
-                or target_timestamp != target_timestamp  # NaN check
-                or target_timestamp == float("inf")
-                or target_timestamp == float("-inf")
-                or target_timestamp < min_timestamp
-                or target_timestamp > max_timestamp
-            ):
-                print(
-                    f"Warning: Invalid timestamp {target_timestamp} for {dest}, skipping metadata correction"
-                )
-                return False
-
             # Set both access and modification times to the target timestamp
             os.utime(dest, (target_timestamp, target_timestamp))
             return True
@@ -1886,11 +1913,8 @@ def extract_by_albums(
 
         orphaned_dir = output_dir / "Unorganized"
         print(
-            f"Extracting orphaned files: Unorganized ({len(orphaned_files)} files, {format_size(orphaned_size)})"
+            f"Extracting orphaned files: Unorganized (time-organized) ({len(orphaned_files)} files, {format_size(orphaned_size)})"
         )
-
-        if copy_files:
-            orphaned_dir.mkdir(parents=True, exist_ok=True)
 
         desc = f"  Unorganized ({format_size(orphaned_size)})"
         with tqdm(
@@ -1920,14 +1944,23 @@ def extract_by_albums(
                 if copy_files:
                     source_path = find_source_file(files_dir, file_record["contentID"])
                     if source_path:
-                        dest_path = orphaned_dir / file_record["name"]
+                        # Use time-based organization within Unorganized folder
+                        dest_path = get_time_organized_path(
+                            orphaned_dir, file_record["name"], file_record
+                        )
+
+                        # Create directory structure
+                        dest_path.parent.mkdir(parents=True, exist_ok=True)
+
                         # Handle duplicate filenames
                         counter = 1
                         original_dest = dest_path
                         while dest_path.exists() and not resume:
                             stem = original_dest.stem
                             suffix = original_dest.suffix
-                            dest_path = orphaned_dir / f"{stem}_{counter}{suffix}"
+                            dest_path = (
+                                original_dest.parent / f"{stem}_{counter}{suffix}"
+                            )
                             counter += 1
 
                         # Use deduplication if enabled
