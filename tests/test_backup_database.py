@@ -762,3 +762,160 @@ class TestBackupDatabaseErrorHandling:
         assert len(files_with_albums) == 1
         assert stats["total_files"] == 1
         assert stats["backup_recovered"] == 0
+
+
+class TestBackupDatabaseReadOnly:
+    """Test backup database read-only access functionality."""
+
+    def test_connect_db_readonly(self, temp_dir):
+        """Test read-only database connection."""
+        from ibirecovery.core.database import connect_db_readonly
+
+        # Create test database
+        db_path = temp_dir / "test.db"
+        conn = sqlite3.connect(db_path)
+        conn.execute("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)")
+        conn.execute("INSERT INTO test (name) VALUES ('test_data')")
+        conn.commit()
+        conn.close()
+
+        # Test read-only connection
+        readonly_conn = connect_db_readonly(db_path)
+        cursor = readonly_conn.cursor()
+        cursor.execute("SELECT name FROM test")
+        result = cursor.fetchone()
+        assert result[0] == "test_data"
+        readonly_conn.close()
+
+    def test_backup_database_readonly_access(self, temp_dir):
+        """Test backup database is accessed in read-only mode."""
+        from ibirecovery.core.database import get_merged_files_with_albums
+
+        # Create main database
+        main_db = temp_dir / "main.db"
+        conn = sqlite3.connect(main_db)
+        conn.execute(
+            """
+            CREATE TABLE Files(
+                id TEXT PRIMARY KEY,
+                name TEXT,
+                contentID TEXT,
+                mimeType TEXT,
+                size INTEGER,
+                cTime INTEGER,
+                imageDate INTEGER,
+                videoDate INTEGER
+            )
+        """
+        )
+        conn.execute(
+            """
+            CREATE TABLE FileGroups(
+                id TEXT PRIMARY KEY,
+                name TEXT,
+                estCount INTEGER DEFAULT 0
+            )
+        """
+        )
+        conn.execute(
+            """
+            CREATE TABLE FileGroupFiles(
+                id TEXT PRIMARY KEY,
+                fileID TEXT,
+                fileGroupID TEXT,
+                fileCTime INTEGER,
+                cTime INTEGER,
+                changeID INTEGER DEFAULT 0,
+                creatorEntityID TEXT,
+                commentsCount INTEGER DEFAULT 0
+            )
+        """
+        )
+        conn.execute(
+            """
+            INSERT INTO Files (id, name, contentID, mimeType, size, cTime, imageDate)
+            VALUES ('file1', 'main.jpg', 'content1', 'image/jpeg', 1000, 1640995200000, 1640995200000)
+        """
+        )
+        conn.commit()
+        conn.close()
+
+        # Create backup database
+        backup_db = temp_dir / "backup.db"
+        conn = sqlite3.connect(backup_db)
+        conn.execute(
+            """
+            CREATE TABLE Files(
+                id TEXT PRIMARY KEY,
+                name TEXT,
+                contentID TEXT,
+                mimeType TEXT,
+                size INTEGER,
+                cTime INTEGER,
+                imageDate INTEGER,
+                videoDate INTEGER
+            )
+        """
+        )
+        conn.execute(
+            """
+            CREATE TABLE FileGroups(
+                id TEXT PRIMARY KEY,
+                name TEXT,
+                estCount INTEGER DEFAULT 0
+            )
+        """
+        )
+        conn.execute(
+            """
+            CREATE TABLE FileGroupFiles(
+                id TEXT PRIMARY KEY,
+                fileID TEXT,
+                fileGroupID TEXT,
+                fileCTime INTEGER,
+                cTime INTEGER,
+                changeID INTEGER DEFAULT 0,
+                creatorEntityID TEXT,
+                commentsCount INTEGER DEFAULT 0
+            )
+        """
+        )
+        conn.execute(
+            """
+            INSERT INTO Files (id, name, contentID, mimeType, size, cTime, imageDate)
+            VALUES ('file2', 'backup.jpg', 'content2', 'image/jpeg', 2000, 1640995300000, 1640995300000)
+        """
+        )
+        conn.commit()
+        conn.close()
+
+        # Make backup database read-only at file system level
+        backup_db.chmod(0o444)
+
+        try:
+            # Test that backup database can be read in read-only mode
+            files_with_albums, stats = get_merged_files_with_albums(main_db, backup_db)
+
+            # Should have files from both databases
+            assert len(files_with_albums) == 2
+            assert stats["total_files"] == 2
+            assert stats["backup_recovered"] == 1
+
+            # Verify file contents
+            content_ids = {item["file"]["contentID"] for item in files_with_albums}
+            assert "content1" in content_ids
+            assert "content2" in content_ids
+
+        finally:
+            # Restore permissions for cleanup
+            backup_db.chmod(0o644)
+
+    def test_readonly_connection_error_handling(self, temp_dir):
+        """Test error handling for read-only database connection."""
+        from ibirecovery.core.database import connect_db_readonly
+
+        # Test with non-existent database
+        nonexistent_db = temp_dir / "nonexistent.db"
+
+        with pytest.raises(sqlite3.Error):
+            connect_db_readonly(nonexistent_db)

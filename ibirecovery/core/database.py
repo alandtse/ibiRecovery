@@ -84,6 +84,18 @@ def connect_db(db_path: Path) -> sqlite3.Connection:
         sys.exit(1)
 
 
+def connect_db_readonly(db_path: Path) -> sqlite3.Connection:
+    """Connect to the SQLite database in read-only mode."""
+    try:
+        # Use URI syntax for read-only access to avoid WAL mode issues
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        conn.row_factory = sqlite3.Row
+        return conn
+    except sqlite3.Error as e:
+        print(f"Error connecting to database in read-only mode: {e}")
+        raise
+
+
 def get_merged_files_with_albums(
     main_db_path: Path, backup_db_path: Optional[Path] = None
 ) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
@@ -104,8 +116,8 @@ def get_merged_files_with_albums(
 
     if backup_db_path and backup_db_path.exists():
         try:
-            # Get files from backup database
-            backup_conn = connect_db(backup_db_path)
+            # Get files from backup database in read-only mode to avoid WAL issues
+            backup_conn = connect_db_readonly(backup_db_path)
             backup_files, backup_stats = get_all_files_with_albums(backup_conn)
 
             print(f"📊 Backup database: {backup_stats['total_files']} files")

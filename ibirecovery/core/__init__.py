@@ -16,6 +16,7 @@ __license__ = "GPL-3.0-or-later"
 # Import main functionality for easy access
 from .database import (
     connect_db,
+    connect_db_readonly,
     detect_ibi_structure,
     get_all_files_with_albums,
     get_comprehensive_export_data,
@@ -40,6 +41,7 @@ from .verification import (
 
 __all__ = [
     "connect_db",
+    "connect_db_readonly",
     "detect_ibi_structure",
     "get_all_files_with_albums",
     "get_merged_files_with_albums",

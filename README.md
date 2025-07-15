@@ -48,6 +48,8 @@ The ibi data is stored in this directory structure on the device:
 /restsdk/data/
 ├── db/
 │   └── index.db          # SQLite database with all metadata
+├── dbBackup/
+│   └── index.db          # Backup database (optional, additional recovery)
 └── files/
     ├── 0/                # Files starting with '0'
     ├── 1/                # Files starting with '1'
@@ -98,8 +100,9 @@ Once you have access, verify the structure:
 
 ```bash
 # Check for required files
-ls /path/to/your/ibi_data/restsdk/data/db/index.db    # Database file
-ls /path/to/your/ibi_data/restsdk/data/files/         # Files directory
+ls /path/to/your/ibi_data/restsdk/data/db/index.db       # Main database file
+ls /path/to/your/ibi_data/restsdk/data/dbBackup/index.db # Backup database (optional)
+ls /path/to/your/ibi_data/restsdk/data/files/            # Files directory
 
 # Quick verification with this toolkit
 poetry run ibi-extract --verify /path/to/your/ibi_data
@@ -221,6 +224,7 @@ Most data recovery tools just extract files. This toolkit recovers:
 - **Searchable content** via 5,312+ AI-generated tags
 - **Geographic context** through GPS and location data
 - **Technical metadata** for photo management software
+- **Backup database recovery** - automatically finds and merges additional files from backup databases
 
 ### Universal Compatibility
 
