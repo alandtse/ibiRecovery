@@ -171,7 +171,6 @@ class TestCrossPlatformCompatibility:
         # Destination should be a regular file, not a symlink
         assert not dest_file.is_symlink()
 
-    @pytest.mark.skipif(platform.system() != "Windows", reason="Windows-specific test")
     def test_windows_path_handling(self, temp_dir):
         """Test Windows-specific path handling."""
         # Test various Windows path issues

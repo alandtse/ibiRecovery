@@ -103,9 +103,6 @@ markers = [
 # Minimum Python version
 minversion = "3.9"
 
-# Test timeout (requires pytest-timeout)
-timeout = 300
-
 # Ignore warnings from dependencies
 filterwarnings = [
     "ignore::DeprecationWarning",
