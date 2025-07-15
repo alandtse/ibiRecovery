@@ -50,6 +50,7 @@ try:
     from .core import (
         get_comprehensive_export_data as core_get_comprehensive_export_data,
     )
+    from .core import get_merged_files_with_albums as core_get_merged_files_with_albums
     from .core import get_time_organized_path as core_get_time_organized_path
     from .core import scan_files_directory as core_scan_files_directory
     from .core import set_file_metadata as core_set_file_metadata
@@ -165,12 +166,14 @@ class ExtractionState:
 extraction_state = ExtractionState()
 
 
-def detect_ibi_structure(root_path: Path) -> Tuple[Optional[Path], Optional[Path]]:
+def detect_ibi_structure(
+    root_path: Path,
+) -> Tuple[Optional[Path], Optional[Path], Optional[Path]]:
     """
     Auto-detect ibi database and files directory structure.
 
     Returns:
-        Tuple of (db_path, files_path) or (None, None) if not found
+        Tuple of (db_path, files_path, backup_db_path) or (None, None, None) if not found
     """
     if CORE_MODULES_AVAILABLE:
         return core_detect_ibi_structure(root_path)
@@ -184,23 +187,45 @@ def detect_ibi_structure(root_path: Path) -> Tuple[Optional[Path], Optional[Path
         (
             root_path / "restsdk" / "data" / "db" / "index.db",
             root_path / "restsdk" / "data" / "files",
+            root_path / "restsdk" / "data" / "dbBackup" / "index.db",
         ),
         # Alternative: direct in data folder
-        (root_path / "data" / "db" / "index.db", root_path / "data" / "files"),
+        (
+            root_path / "data" / "db" / "index.db",
+            root_path / "data" / "files",
+            root_path / "data" / "dbBackup" / "index.db",
+        ),
         # Alternative: root contains db and files directly
-        (root_path / "db" / "index.db", root_path / "files"),
+        (
+            root_path / "db" / "index.db",
+            root_path / "files",
+            root_path / "dbBackup" / "index.db",
+        ),
         # Alternative: index.db in root
-        (root_path / "index.db", root_path / "files"),
+        (
+            root_path / "index.db",
+            root_path / "files",
+            root_path / "dbBackup" / "index.db",
+        ),
     ]
 
-    for db_path, files_path in candidates:
+    for db_path, files_path, backup_db_path in candidates:
         if db_path.exists() and files_path.exists():
+            # Check if backup database exists
+            backup_exists = backup_db_path.exists()
+
             print(f"✅ Detected ibi structure:")
             print(f"   Database: {db_path}")
             print(f"   Files: {files_path}")
-            return db_path, files_path
+            if backup_exists:
+                print(f"   Backup DB: {backup_db_path}")
+            else:
+                print(f"   Backup DB: Not found (optional)")
+                backup_db_path = None
 
-    return None, None
+            return db_path, files_path, backup_db_path
+
+    return None, None, None
 
 
 def check_rsync_available() -> bool:
@@ -2615,11 +2640,20 @@ Advanced options:
     if args.db_path and args.files_path:
         db_path = args.db_path
         files_dir = args.files_path
+        # Try to find backup database near the main database
+        backup_db_path = db_path.parent.parent / "dbBackup" / "index.db"
+        if not backup_db_path.exists():
+            backup_db_path = None
+
         print(f"Using provided paths:")
         print(f"   Database: {db_path}")
         print(f"   Files: {files_dir}")
+        if backup_db_path:
+            print(f"   Backup DB: {backup_db_path}")
+        else:
+            print(f"   Backup DB: Not found (optional)")
     else:
-        db_path, files_dir = detect_ibi_structure(ibi_root)
+        db_path, files_dir, backup_db_path = detect_ibi_structure(ibi_root)
         if not db_path or not files_dir:
             print(f"❌ Could not detect ibi structure in: {ibi_root}")
             print(
@@ -2653,12 +2687,30 @@ Advanced options:
     if not args.list_only and output_dir:
         output_dir.mkdir(parents=True, exist_ok=True)
 
-    conn = connect_db(db_path)
-    files_with_albums, stats = get_all_files_with_albums(conn)
+    # Use merged database function to include backup database files
+    if CORE_MODULES_AVAILABLE:
+        files_with_albums, stats = core_get_merged_files_with_albums(
+            db_path, backup_db_path
+        )
+    else:
+        # Fallback to single database
+        conn = connect_db(db_path)
+        files_with_albums, stats = get_all_files_with_albums(conn)
+        stats["backup_recovered"] = 0
 
     print(
         f"Found {stats['total_files']} total files in database ({format_size(stats['total_size'])})"
     )
+
+    # Show backup recovery information
+    if stats.get("backup_recovered", 0) > 0:
+        print(
+            f"  📥 Recovered {stats['backup_recovered']} additional files from backup database"
+        )
+    elif backup_db_path:
+        print(f"  ℹ️  Backup database checked - no additional files found")
+    else:
+        print(f"  ℹ️  No backup database available")
 
     # Show detailed statistics
     if args.stats or True:  # Always show basic stats

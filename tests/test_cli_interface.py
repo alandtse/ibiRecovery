@@ -37,7 +37,7 @@ class TestCLIWorkflows:
     ):
         """Test verification workflow from CLI."""
         # Setup mocks
-        mock_detect.return_value = (mock_database, mock_ibi_structure["files"])
+        mock_detect.return_value = (mock_database, mock_ibi_structure["files"], None)
         mock_conn = MagicMock()
         mock_connect.return_value = mock_conn
         mock_conn.execute.return_value.fetchall.return_value = []

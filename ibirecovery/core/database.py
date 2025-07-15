@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
 """
 Database operations for ibiRecovery.
@@ -16,12 +15,14 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 
-def detect_ibi_structure(root_path: Path) -> Tuple[Optional[Path], Optional[Path]]:
+def detect_ibi_structure(
+    root_path: Path,
+) -> Tuple[Optional[Path], Optional[Path], Optional[Path]]:
     """
     Auto-detect ibi database and files directory structure.
 
     Returns:
-        Tuple of (db_path, files_path) or (None, None) if not found
+        Tuple of (db_path, files_path, backup_db_path) or (None, None, None) if not found
     """
     root_path = Path(root_path)
 
@@ -31,23 +32,45 @@ def detect_ibi_structure(root_path: Path) -> Tuple[Optional[Path], Optional[Path
         (
             root_path / "restsdk" / "data" / "db" / "index.db",
             root_path / "restsdk" / "data" / "files",
+            root_path / "restsdk" / "data" / "dbBackup" / "index.db",
         ),
         # Alternative: direct in data folder
-        (root_path / "data" / "db" / "index.db", root_path / "data" / "files"),
+        (
+            root_path / "data" / "db" / "index.db",
+            root_path / "data" / "files",
+            root_path / "data" / "dbBackup" / "index.db",
+        ),
         # Alternative: root contains db and files directly
-        (root_path / "db" / "index.db", root_path / "files"),
+        (
+            root_path / "db" / "index.db",
+            root_path / "files",
+            root_path / "dbBackup" / "index.db",
+        ),
         # Alternative: index.db in root
-        (root_path / "index.db", root_path / "files"),
+        (
+            root_path / "index.db",
+            root_path / "files",
+            root_path / "dbBackup" / "index.db",
+        ),
     ]
 
-    for db_path, files_path in candidates:
+    for db_path, files_path, backup_db_path in candidates:
         if db_path.exists() and files_path.exists():
+            # Check if backup database exists
+            backup_exists = backup_db_path.exists()
+
             print(f"✅ Detected ibi structure:")
             print(f"   Database: {db_path}")
             print(f"   Files: {files_path}")
-            return db_path, files_path
+            if backup_exists:
+                print(f"   Backup DB: {backup_db_path}")
+            else:
+                print(f"   Backup DB: Not found (optional)")
+                backup_db_path = None
 
-    return None, None
+            return db_path, files_path, backup_db_path
+
+    return None, None, None
 
 
 def connect_db(db_path: Path) -> sqlite3.Connection:
@@ -59,6 +82,94 @@ def connect_db(db_path: Path) -> sqlite3.Connection:
     except sqlite3.Error as e:
         print(f"Error connecting to database: {e}")
         sys.exit(1)
+
+
+def get_merged_files_with_albums(
+    main_db_path: Path, backup_db_path: Optional[Path] = None
+) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
+    """
+    Get files from main database and optionally merge with backup database.
+
+    This helps recover orphaned files by finding entries that exist in backup
+    but not in main database.
+
+    Returns:
+        Tuple of (files_with_albums, stats)
+    """
+    # Get files from main database
+    main_conn = connect_db(main_db_path)
+    files_with_albums, stats = get_all_files_with_albums(main_conn)
+
+    print(f"📊 Main database: {stats['total_files']} files")
+
+    if backup_db_path and backup_db_path.exists():
+        try:
+            # Get files from backup database
+            backup_conn = connect_db(backup_db_path)
+            backup_files, backup_stats = get_all_files_with_albums(backup_conn)
+
+            print(f"📊 Backup database: {backup_stats['total_files']} files")
+
+            # Create set of contentIDs from main database
+            main_content_ids = {item["file"]["contentID"] for item in files_with_albums}
+
+            # Find files in backup that aren't in main
+            additional_files = []
+            for backup_item in backup_files:
+                backup_content_id = backup_item["file"]["contentID"]
+                if backup_content_id not in main_content_ids:
+                    # Mark as recovered from backup
+                    backup_item["file"]["_source"] = "backup"
+                    additional_files.append(backup_item)
+
+            if additional_files:
+                print(
+                    f"🔄 Found {len(additional_files)} additional files in backup database"
+                )
+                files_with_albums.extend(additional_files)
+
+                # Update statistics
+                for item in additional_files:
+                    file_size = item["file"]["size"] or 0
+                    stats["total_size"] += file_size
+
+                    mime_type = item["file"]["mimeType"] or ""
+                    if mime_type.startswith("image/"):
+                        stats["size_by_type"]["images"] = (
+                            stats["size_by_type"].get("images", 0) + file_size
+                        )
+                    elif mime_type.startswith("video/"):
+                        stats["size_by_type"]["videos"] = (
+                            stats["size_by_type"].get("videos", 0) + file_size
+                        )
+                    elif mime_type.startswith("application/") or mime_type.startswith(
+                        "text/"
+                    ):
+                        stats["size_by_type"]["documents"] = (
+                            stats["size_by_type"].get("documents", 0) + file_size
+                        )
+                    else:
+                        stats["size_by_type"]["other"] = (
+                            stats["size_by_type"].get("other", 0) + file_size
+                        )
+
+                stats["total_files"] = len(files_with_albums)
+                stats["backup_recovered"] = len(additional_files)
+            else:
+                print("ℹ️  No additional files found in backup database")
+                stats["backup_recovered"] = 0
+
+            backup_conn.close()
+
+        except sqlite3.Error as e:
+            print(f"⚠️  Warning: Could not read backup database: {e}")
+            stats["backup_recovered"] = 0
+    else:
+        print("ℹ️  No backup database available")
+        stats["backup_recovered"] = 0
+
+    main_conn.close()
+    return files_with_albums, stats
 
 
 def get_all_files_with_albums(

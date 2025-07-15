@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
 """
 ibiRecovery Core Modules
@@ -20,6 +19,7 @@ from .database import (
     detect_ibi_structure,
     get_all_files_with_albums,
     get_comprehensive_export_data,
+    get_merged_files_with_albums,
 )
 from .export import MetadataExporter, export_metadata_formats
 from .file_operations import (
@@ -30,6 +30,7 @@ from .file_operations import (
     get_time_organized_path,
     set_file_metadata,
 )
+from .orphan_filter import OrphanFileFilter
 from .utils import find_source_file, format_size
 from .verification import (
     comprehensive_audit,
@@ -41,6 +42,7 @@ __all__ = [
     "connect_db",
     "detect_ibi_structure",
     "get_all_files_with_albums",
+    "get_merged_files_with_albums",
     "copy_file_fallback",
     "copy_file_rsync",
     "get_best_timestamp",
@@ -52,4 +54,7 @@ __all__ = [
     "comprehensive_audit",
     "export_metadata_formats",
     "MetadataExporter",
+    "OrphanFileFilter",
+    "scan_files_directory",
+    "check_rsync_available",
 ]

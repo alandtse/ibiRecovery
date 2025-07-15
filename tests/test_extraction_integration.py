@@ -103,7 +103,8 @@ class TestExtractionIntegration:
         # Check files were copied
         assert (family_vacation_dir / "test1.jpg").exists()
         assert (family_vacation_dir / "test2.mp4").exists()
-        assert (orphaned_dir / "test3.png").exists()
+        # Orphaned files are now organized by time: Unorganized/YYYY/MM/filename
+        assert (orphaned_dir / "2021" / "12" / "test3.png").exists()
 
         # Verify file contents
         assert (
@@ -112,7 +113,9 @@ class TestExtractionIntegration:
         assert (
             family_vacation_dir / "test2.mp4"
         ).read_bytes() == b"fake mp4 content" * 5000
-        assert (orphaned_dir / "test3.png").read_bytes() == b"fake png content" * 500
+        assert (
+            orphaned_dir / "2021" / "12" / "test3.png"
+        ).read_bytes() == b"fake png content" * 500
 
     def test_extract_by_albums_with_deduplication(
         self, mock_database, mock_ibi_structure, mock_files

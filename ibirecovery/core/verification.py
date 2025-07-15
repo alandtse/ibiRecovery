@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
 """
 Verification and audit functionality for ibiRecovery.
@@ -16,6 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from .orphan_filter import OrphanFileFilter, print_orphan_filter_summary
 from .utils import find_source_file, format_size
 
 
@@ -76,6 +76,25 @@ def comprehensive_audit(
     # Files on disk but not in database (orphaned)
     orphaned_files = disk_content_ids - db_content_ids
 
+    # Apply orphan filtering to reduce noise
+    orphan_filter_results = None
+    filtered_orphaned_files = orphaned_files
+
+    if orphaned_files:
+        print(f"\n🔍 Analyzing {len(orphaned_files):,} orphaned files...")
+        orphan_filter = OrphanFileFilter(files_dir)
+        orphan_file_paths = [disk_files[cid]["path"] for cid in orphaned_files]
+        orphan_filter_results = orphan_filter.filter_orphan_files(orphan_file_paths)
+
+        # Show filtering results
+        print_orphan_filter_summary(orphan_filter_results)
+
+        # Get filtered list of content IDs to keep
+        keep_paths = {item["file_path"] for item in orphan_filter_results["keep_files"]}
+        filtered_orphaned_files = {
+            cid for cid in orphaned_files if disk_files[cid]["path"] in keep_paths
+        }
+
     # Calculate statistics
     db_total_size = sum(
         (db_files_by_id[cid].get("size") or 0) for cid in db_content_ids
@@ -85,6 +104,9 @@ def comprehensive_audit(
     )
     missing_size = sum((db_files_by_id[cid].get("size") or 0) for cid in missing_files)
     orphaned_size = sum((disk_files[cid]["size"]) for cid in orphaned_files)
+    filtered_orphaned_size = sum(
+        (disk_files[cid]["size"]) for cid in filtered_orphaned_files
+    )
 
     # Calculate percentages
     file_recovery_rate = (
@@ -92,17 +114,26 @@ def comprehensive_audit(
     )
     size_recovery_rate = (available_size / db_total_size) * 100 if db_total_size else 0
     orphan_rate = (len(orphaned_files) / len(disk_files)) * 100 if disk_files else 0
+    filtered_orphan_rate = (
+        (len(filtered_orphaned_files) / len(disk_files)) * 100 if disk_files else 0
+    )
 
-    print(f"\n📊 AUDIT RESULTS:")
+    print(f"\n📊 FINAL AUDIT RESULTS:")
     print(f"  Database files: {len(db_content_ids):,} ({format_size(db_total_size)})")
     print(
         f"  Available files: {len(available_files):,} ({format_size(available_size)})"
     )
     print(f"  Missing files: {len(missing_files):,} ({format_size(missing_size)})")
-    print(f"  Orphaned files: {len(orphaned_files):,} ({format_size(orphaned_size)})")
+    print(
+        f"  Raw orphaned files: {len(orphaned_files):,} ({format_size(orphaned_size)})"
+    )
+    print(
+        f"  Filtered orphaned files: {len(filtered_orphaned_files):,} ({format_size(filtered_orphaned_size)})"
+    )
     print(f"  File recovery rate: {file_recovery_rate:.1f}%")
     print(f"  Size recovery rate: {size_recovery_rate:.1f}%")
-    print(f"  Orphan rate: {orphan_rate:.1f}%")
+    print(f"  Raw orphan rate: {orphan_rate:.1f}%")
+    print(f"  Filtered orphan rate: {filtered_orphan_rate:.1f}%")
 
     # Save detailed audit report if requested
     if audit_report_dir:
@@ -195,12 +226,17 @@ def comprehensive_audit(
         "available_files": len(available_files),
         "missing_files": len(missing_files),
         "orphaned_files": len(orphaned_files),
+        "filtered_orphaned_files": len(filtered_orphaned_files),
         "file_recovery_rate": file_recovery_rate,
         "size_recovery_rate": size_recovery_rate,
         "orphan_rate": orphan_rate,
+        "filtered_orphan_rate": filtered_orphan_rate,
         "available_size": available_size,
         "missing_size": missing_size,
         "orphaned_size": orphaned_size,
+        "filtered_orphaned_size": filtered_orphaned_size,
+        "orphan_filter_results": orphan_filter_results,
+        "comprehensive": True,
     }
 
 

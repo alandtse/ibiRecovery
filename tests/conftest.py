@@ -43,63 +43,122 @@ def mock_database(mock_ibi_structure):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    # Create Files table with all fields expected by comprehensive export
+    # Create Files table matching the real ibi database schema from documentation
     cursor.execute(
         """
-        CREATE TABLE Files (
-            id TEXT PRIMARY KEY,
-            name TEXT,
-            contentID TEXT,
-            mimeType TEXT,
-            size INTEGER,
-            createdTime REAL,
-            modifiedTime REAL,
-            imageDate REAL,
-            videoDate REAL,
-            cTime REAL,
-            uTime REAL,
-            mTime REAL,
-            birthTime REAL,
+        CREATE TABLE Files(
+            id TEXT NOT NULL PRIMARY KEY,
+            parentID TEXT REFERENCES Files(id),
+            contentID TEXT UNIQUE,
+            version INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            birthTime INTEGER NOT NULL,
+            cTime INTEGER NOT NULL,
+            uTime INTEGER,
+            mTime INTEGER,
+            size INTEGER NOT NULL DEFAULT 0,
+            mimeType TEXT NOT NULL DEFAULT '',
+            storageID TEXT NOT NULL,
+            hidden INTEGER NOT NULL DEFAULT 1,
+            description TEXT NOT NULL DEFAULT '',
+            custom TEXT NOT NULL DEFAULT '',
+            creatorEntityID TEXT REFERENCES Entities(id),
+
+            -- Image metadata
+            imageDate INTEGER,
+            imageWidth INTEGER NOT NULL DEFAULT 0,
+            imageHeight INTEGER NOT NULL DEFAULT 0,
+            imageCameraMake TEXT NOT NULL DEFAULT '',
+            imageCameraModel TEXT NOT NULL DEFAULT '',
+            imageAperture REAL NOT NULL DEFAULT 0,
+            imageExposureTime REAL NOT NULL DEFAULT 0,
+            imageISOSpeed INTEGER NOT NULL DEFAULT 0,
+            imageFocalLength REAL NOT NULL DEFAULT 0,
+            imageFlashFired INTEGER,
+            imageOrientation INTEGER NOT NULL DEFAULT 0,
             imageLatitude REAL,
             imageLongitude REAL,
             imageAltitude REAL,
-            imageCity TEXT,
-            imageProvince TEXT,
-            imageCountry TEXT,
+            imageCity TEXT NOT NULL DEFAULT '',
+            imageProvince TEXT NOT NULL DEFAULT '',
+            imageCountry TEXT NOT NULL DEFAULT '',
+
+            -- Video metadata
+            videoDate INTEGER,
+            videoCodec TEXT NOT NULL DEFAULT '',
+            videoWidth INTEGER NOT NULL DEFAULT 0,
+            videoHeight INTEGER NOT NULL DEFAULT 0,
+            videoDuration REAL NOT NULL DEFAULT 0,
+            videoOrientation INTEGER NOT NULL DEFAULT 0,
             videoLatitude REAL,
             videoLongitude REAL,
             videoAltitude REAL,
-            videoCity TEXT,
-            videoProvince TEXT,
-            videoCountry TEXT,
-            imageCameraMake TEXT,
-            imageCameraModel TEXT,
-            description TEXT
+            videoCity TEXT NOT NULL DEFAULT '',
+            videoProvince TEXT NOT NULL DEFAULT '',
+            videoCountry TEXT NOT NULL DEFAULT '',
+
+            -- Audio metadata
+            audioDuration REAL NOT NULL DEFAULT 0,
+            audioTitle TEXT NOT NULL DEFAULT '',
+            audioAlbum TEXT NOT NULL DEFAULT '',
+            audioArtist TEXT NOT NULL DEFAULT '',
+
+            -- Additional fields
+            category INTEGER,
+            month INTEGER NOT NULL DEFAULT 0,
+            week INTEGER NOT NULL DEFAULT 0
         )
     """
     )
 
-    # Create FileGroups table (albums) with description field
+    # Create FileGroups table matching the real schema
     cursor.execute(
         """
-        CREATE TABLE FileGroups (
-            id TEXT PRIMARY KEY,
-            name TEXT,
-            type TEXT,
-            estCount INTEGER,
-            description TEXT
+        CREATE TABLE FileGroups(
+            id TEXT NOT NULL PRIMARY KEY,
+            name TEXT NOT NULL,
+            previewFileID TEXT REFERENCES Files(id),
+            cTime INTEGER NOT NULL,
+            mTime INTEGER,
+            description TEXT NOT NULL DEFAULT '',
+            estCount INTEGER NOT NULL DEFAULT 0,
+            estMinTime INTEGER,
+            estMaxTime INTEGER,
+            creatorEntityID TEXT REFERENCES Entities(id),
+            post INTEGER NOT NULL DEFAULT 0,
+            commentsCount INTEGER NOT NULL DEFAULT 0
         )
     """
     )
 
-    # Create FileGroupFiles table (album membership)
+    # Create FileGroupFiles table matching the real schema
     cursor.execute(
         """
-        CREATE TABLE FileGroupFiles (
-            fileGroupID TEXT,
-            fileID TEXT,
-            FOREIGN KEY (fileGroupID) REFERENCES FileGroups(id),
-            FOREIGN KEY (fileID) REFERENCES Files(id)
+        CREATE TABLE FileGroupFiles(
+            id TEXT NOT NULL PRIMARY KEY,
+            fileID TEXT NOT NULL REFERENCES Files(id),
+            fileGroupID TEXT NOT NULL REFERENCES FileGroups(id),
+            fileCTime INTEGER NOT NULL,
+            cTime INTEGER NOT NULL,
+            changeID INTEGER NOT NULL DEFAULT 0,
+            creatorEntityID TEXT REFERENCES Entities(id),
+            commentsCount INTEGER NOT NULL DEFAULT 0
+        )
+    """
+    )
+
+    # Create Entities table (referenced by foreign keys)
+    cursor.execute(
+        """
+        CREATE TABLE Entities(
+            id TEXT NOT NULL PRIMARY KEY,
+            extID TEXT NOT NULL,
+            type INTEGER NOT NULL,
+            rootID TEXT REFERENCES Files(id),
+            cTime INTEGER NOT NULL,
+            version INTEGER NOT NULL,
+            timeZoneName TEXT NOT NULL DEFAULT '',
+            lang TEXT NOT NULL DEFAULT ''
         )
     """
     )
@@ -116,164 +175,316 @@ def mock_database(mock_ibi_structure):
     """
     )
 
-    # Insert test data with all required fields
+    # Insert test data matching the real schema structure
     test_files = [
-        (
-            "file1",
-            "test1.jpg",
-            "a1b2c3d4e5f6",
-            "image/jpeg",
-            1024000,
-            1640995200.0,
-            1640995200.0,
-            1640995200.0,
-            None,
-            1640995200.0,
-            1640995100.0,  # uTime
-            1640995150.0,  # mTime
-            1640995200.0,
-            37.7749,
-            -122.4194,
-            None,
-            "San Francisco",
-            "CA",
-            "USA",
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            "Canon",
-            "EOS R5",
-            "A test image",
-        ),
-        (
-            "file2",
-            "test2.mp4",
-            "b2c3d4e5f6a1",
-            "video/mp4",
-            5120000,
-            1640995300.0,
-            1640995300.0,
-            None,
-            1640995300.0,
-            1640995300.0,
-            1640995200.0,  # uTime
-            1640995250.0,  # mTime
-            1640995300.0,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            37.7849,
-            -122.4294,
-            None,
-            "San Francisco",
-            "CA",
-            "USA",
-            None,
-            None,
-            "A test video",
-        ),
-        (
-            "file3",
-            "test3.png",
-            "c3d4e5f6a1b2",
-            "image/png",
-            512000,
-            1640995400.0,
-            1640995400.0,
-            1640995400.0,
-            None,
-            1640995400.0,
-            1640995300.0,  # uTime
-            1640995350.0,  # mTime
-            1640995400.0,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            "A test PNG",
-        ),
-        (
-            "file4",
-            "missing.jpg",
-            "d4e5f6a1b2c3",
-            "image/jpeg",
-            2048000,
-            1640995500.0,
-            1640995500.0,
-            1640995500.0,
-            None,
-            1640995500.0,
-            1640995400.0,  # uTime
-            1640995450.0,  # mTime
-            1640995500.0,
-            40.7128,
-            -74.0060,
-            None,
-            "New York",
-            "NY",
-            "USA",
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            "Sony",
-            "A7R IV",
-            "Missing test image",
-        ),
+        {
+            "id": "file1",
+            "parentID": None,
+            "contentID": "a1b2c3d4e5f6",
+            "version": 1,
+            "name": "test1.jpg",
+            "birthTime": 1640995200000,  # Convert to milliseconds
+            "cTime": 1640995200000,
+            "uTime": 1640995100000,
+            "mTime": 1640995150000,
+            "size": 1024000,
+            "mimeType": "image/jpeg",
+            "storageID": "local",
+            "hidden": 0,
+            "description": "A test image",
+            "custom": "",
+            "creatorEntityID": None,
+            "imageDate": 1640995200000,
+            "imageWidth": 1920,
+            "imageHeight": 1080,
+            "imageCameraMake": "Canon",
+            "imageCameraModel": "EOS R5",
+            "imageAperture": 2.8,
+            "imageExposureTime": 0.001,
+            "imageISOSpeed": 200,
+            "imageFocalLength": 85.0,
+            "imageFlashFired": 0,
+            "imageOrientation": 1,
+            "imageLatitude": 37.7749,
+            "imageLongitude": -122.4194,
+            "imageAltitude": None,
+            "imageCity": "San Francisco",
+            "imageProvince": "CA",
+            "imageCountry": "USA",
+            "videoDate": None,
+            "videoCodec": "",
+            "videoWidth": 0,
+            "videoHeight": 0,
+            "videoDuration": 0,
+            "videoOrientation": 0,
+            "videoLatitude": None,
+            "videoLongitude": None,
+            "videoAltitude": None,
+            "videoCity": "",
+            "videoProvince": "",
+            "videoCountry": "",
+            "audioDuration": 0,
+            "audioTitle": "",
+            "audioAlbum": "",
+            "audioArtist": "",
+            "category": 1,
+            "month": 12,
+            "week": 52,
+        },
+        {
+            "id": "file2",
+            "parentID": None,
+            "contentID": "b2c3d4e5f6a1",
+            "version": 1,
+            "name": "test2.mp4",
+            "birthTime": 1640995300000,
+            "cTime": 1640995300000,
+            "uTime": 1640995200000,
+            "mTime": 1640995250000,
+            "size": 5120000,
+            "mimeType": "video/mp4",
+            "storageID": "local",
+            "hidden": 0,
+            "description": "A test video",
+            "custom": "",
+            "creatorEntityID": None,
+            "imageDate": None,
+            "imageWidth": 0,
+            "imageHeight": 0,
+            "imageCameraMake": "",
+            "imageCameraModel": "",
+            "imageAperture": 0,
+            "imageExposureTime": 0,
+            "imageISOSpeed": 0,
+            "imageFocalLength": 0,
+            "imageFlashFired": None,
+            "imageOrientation": 0,
+            "imageLatitude": None,
+            "imageLongitude": None,
+            "imageAltitude": None,
+            "imageCity": "",
+            "imageProvince": "",
+            "imageCountry": "",
+            "videoDate": 1640995300000,
+            "videoCodec": "h264",
+            "videoWidth": 1920,
+            "videoHeight": 1080,
+            "videoDuration": 30.5,
+            "videoOrientation": 1,
+            "videoLatitude": 37.7849,
+            "videoLongitude": -122.4294,
+            "videoAltitude": None,
+            "videoCity": "San Francisco",
+            "videoProvince": "CA",
+            "videoCountry": "USA",
+            "audioDuration": 30.5,
+            "audioTitle": "",
+            "audioAlbum": "",
+            "audioArtist": "",
+            "category": 2,
+            "month": 12,
+            "week": 52,
+        },
+        {
+            "id": "file3",
+            "parentID": None,
+            "contentID": "c3d4e5f6a1b2",
+            "version": 1,
+            "name": "test3.png",
+            "birthTime": 1640995400000,
+            "cTime": 1640995400000,
+            "uTime": 1640995300000,
+            "mTime": 1640995350000,
+            "size": 512000,
+            "mimeType": "image/png",
+            "storageID": "local",
+            "hidden": 0,
+            "description": "A test PNG",
+            "custom": "",
+            "creatorEntityID": None,
+            "imageDate": 1640995400000,
+            "imageWidth": 800,
+            "imageHeight": 600,
+            "imageCameraMake": "",
+            "imageCameraModel": "",
+            "imageAperture": 0,
+            "imageExposureTime": 0,
+            "imageISOSpeed": 0,
+            "imageFocalLength": 0,
+            "imageFlashFired": None,
+            "imageOrientation": 1,
+            "imageLatitude": None,
+            "imageLongitude": None,
+            "imageAltitude": None,
+            "imageCity": "",
+            "imageProvince": "",
+            "imageCountry": "",
+            "videoDate": None,
+            "videoCodec": "",
+            "videoWidth": 0,
+            "videoHeight": 0,
+            "videoDuration": 0,
+            "videoOrientation": 0,
+            "videoLatitude": None,
+            "videoLongitude": None,
+            "videoAltitude": None,
+            "videoCity": "",
+            "videoProvince": "",
+            "videoCountry": "",
+            "audioDuration": 0,
+            "audioTitle": "",
+            "audioAlbum": "",
+            "audioArtist": "",
+            "category": 1,
+            "month": 12,
+            "week": 52,
+        },
+        {
+            "id": "file4",
+            "parentID": None,
+            "contentID": "d4e5f6a1b2c3",
+            "version": 1,
+            "name": "missing.jpg",
+            "birthTime": 1640995500000,
+            "cTime": 1640995500000,
+            "uTime": 1640995400000,
+            "mTime": 1640995450000,
+            "size": 2048000,
+            "mimeType": "image/jpeg",
+            "storageID": "local",
+            "hidden": 0,
+            "description": "Missing test image",
+            "custom": "",
+            "creatorEntityID": None,
+            "imageDate": 1640995500000,
+            "imageWidth": 2048,
+            "imageHeight": 1536,
+            "imageCameraMake": "Sony",
+            "imageCameraModel": "A7R IV",
+            "imageAperture": 1.8,
+            "imageExposureTime": 0.0005,
+            "imageISOSpeed": 100,
+            "imageFocalLength": 50.0,
+            "imageFlashFired": 0,
+            "imageOrientation": 1,
+            "imageLatitude": 40.7128,
+            "imageLongitude": -74.0060,
+            "imageAltitude": None,
+            "imageCity": "New York",
+            "imageProvince": "NY",
+            "imageCountry": "USA",
+            "videoDate": None,
+            "videoCodec": "",
+            "videoWidth": 0,
+            "videoHeight": 0,
+            "videoDuration": 0,
+            "videoOrientation": 0,
+            "videoLatitude": None,
+            "videoLongitude": None,
+            "videoAltitude": None,
+            "videoCity": "",
+            "videoProvince": "",
+            "videoCountry": "",
+            "audioDuration": 0,
+            "audioTitle": "",
+            "audioAlbum": "",
+            "audioArtist": "",
+            "category": 1,
+            "month": 12,
+            "week": 52,
+        },
     ]
 
+    # Insert files using the complete schema
     for file_data in test_files:
+        placeholders = ", ".join(["?" for _ in file_data.keys()])
+        columns = ", ".join(file_data.keys())
         cursor.execute(
-            """
-            INSERT INTO Files (id, name, contentID, mimeType, size, createdTime, modifiedTime, imageDate, videoDate, cTime, uTime, mTime, birthTime, imageLatitude, imageLongitude, imageAltitude, imageCity, imageProvince, imageCountry, videoLatitude, videoLongitude, videoAltitude, videoCity, videoProvince, videoCountry, imageCameraMake, imageCameraModel, description)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-            file_data,
+            f"INSERT INTO Files ({columns}) VALUES ({placeholders})",
+            list(file_data.values()),
         )
 
-    # Insert test albums with descriptions
+    # Insert test albums matching the real schema
     test_albums = [
-        ("album1", "Family Vacation", "user", 2, "Photos from family vacation"),
-        ("album2", "Work Photos", "user", 1, "Work-related photos"),
+        {
+            "id": "album1",
+            "name": "Family Vacation",
+            "previewFileID": "file1",
+            "cTime": 1640995000000,
+            "mTime": 1640995500000,
+            "description": "Photos from family vacation",
+            "estCount": 2,
+            "estMinTime": 1640995200000,
+            "estMaxTime": 1640995300000,
+            "creatorEntityID": None,
+            "post": 0,
+            "commentsCount": 0,
+        },
+        {
+            "id": "album2",
+            "name": "Work Photos",
+            "previewFileID": "file3",
+            "cTime": 1640995300000,
+            "mTime": 1640995400000,
+            "description": "Work-related photos",
+            "estCount": 1,
+            "estMinTime": 1640995400000,
+            "estMaxTime": 1640995400000,
+            "creatorEntityID": None,
+            "post": 0,
+            "commentsCount": 0,
+        },
     ]
 
     for album_data in test_albums:
+        placeholders = ", ".join(["?" for _ in album_data.keys()])
+        columns = ", ".join(album_data.keys())
         cursor.execute(
-            """
-            INSERT INTO FileGroups (id, name, type, estCount, description)
-            VALUES (?, ?, ?, ?, ?)
-        """,
-            album_data,
+            f"INSERT INTO FileGroups ({columns}) VALUES ({placeholders})",
+            list(album_data.values()),
         )
 
-    # Insert album memberships
-    cursor.execute(
-        "INSERT INTO FileGroupFiles (fileGroupID, fileID) VALUES ('album1', 'file1')"
-    )
-    cursor.execute(
-        "INSERT INTO FileGroupFiles (fileGroupID, fileID) VALUES ('album1', 'file2')"
-    )
-    cursor.execute(
-        "INSERT INTO FileGroupFiles (fileGroupID, fileID) VALUES ('album2', 'file3')"
-    )
+    # Insert album memberships matching the real schema
+    album_memberships = [
+        {
+            "id": "membership1",
+            "fileID": "file1",
+            "fileGroupID": "album1",
+            "fileCTime": 1640995200000,
+            "cTime": 1640995000000,
+            "changeID": 1,
+            "creatorEntityID": None,
+            "commentsCount": 0,
+        },
+        {
+            "id": "membership2",
+            "fileID": "file2",
+            "fileGroupID": "album1",
+            "fileCTime": 1640995300000,
+            "cTime": 1640995000000,
+            "changeID": 2,
+            "creatorEntityID": None,
+            "commentsCount": 0,
+        },
+        {
+            "id": "membership3",
+            "fileID": "file3",
+            "fileGroupID": "album2",
+            "fileCTime": 1640995400000,
+            "cTime": 1640995300000,
+            "changeID": 1,
+            "creatorEntityID": None,
+            "commentsCount": 0,
+        },
+    ]
+
+    for membership_data in album_memberships:
+        placeholders = ", ".join(["?" for _ in membership_data.keys()])
+        columns = ", ".join(membership_data.keys())
+        cursor.execute(
+            f"INSERT INTO FileGroupFiles ({columns}) VALUES ({placeholders})",
+            list(membership_data.values()),
+        )
 
     # Insert AI tags
     test_tags = [

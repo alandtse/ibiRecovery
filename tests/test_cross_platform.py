@@ -388,9 +388,10 @@ class TestEdgeCases:
         empty_dir = temp_dir / "empty"
         empty_dir.mkdir()
 
-        db_path, files_path = detect_ibi_structure(empty_dir)
+        db_path, files_path, backup_db_path = detect_ibi_structure(empty_dir)
         assert db_path is None
         assert files_path is None
+        assert backup_db_path is None
 
         # Test with partial structure (only db, no files)
         partial_dir = temp_dir / "partial"
@@ -398,9 +399,10 @@ class TestEdgeCases:
         db_dir.mkdir(parents=True)
         (db_dir / "index.db").touch()
 
-        db_path, files_path = detect_ibi_structure(partial_dir)
+        db_path, files_path, backup_db_path = detect_ibi_structure(partial_dir)
         assert db_path is None  # Should fail if files dir missing
         assert files_path is None
+        assert backup_db_path is None
 
         # Test with complete structure
         complete_dir = temp_dir / "complete"
@@ -410,11 +412,12 @@ class TestEdgeCases:
         files_dir.mkdir(parents=True)
         (db_dir / "index.db").touch()
 
-        db_path, files_path = detect_ibi_structure(complete_dir)
+        db_path, files_path, backup_db_path = detect_ibi_structure(complete_dir)
         assert db_path is not None
         assert files_path is not None
         assert db_path.name == "index.db"
         assert files_path.name == "files"
+        # backup_db_path may be None (backup is optional)
 
 
 class TestMemoryAndPerformance:

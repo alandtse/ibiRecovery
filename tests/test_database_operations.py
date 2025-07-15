@@ -26,7 +26,7 @@ class TestDatabaseOperations:
         root = mock_ibi_structure["root"]
 
         # The mock_database fixture creates the database, so detection should work
-        db_path, files_path = detect_ibi_structure(root)
+        db_path, files_path, backup_db_path = detect_ibi_structure(root)
 
         assert db_path == mock_ibi_structure["db"] / "index.db"
         assert files_path == mock_ibi_structure["files"]
@@ -37,9 +37,10 @@ class TestDatabaseOperations:
         invalid_root.mkdir()
 
         # Should return (None, None) for invalid structure
-        db_path, files_path = detect_ibi_structure(invalid_root)
+        db_path, files_path, backup_db_path = detect_ibi_structure(invalid_root)
         assert db_path is None
         assert files_path is None
+        assert backup_db_path is None
 
     def test_detect_ibi_structure_direct_paths(self, mock_ibi_structure):
         """Test detection when given direct db/files paths."""
@@ -49,9 +50,12 @@ class TestDatabaseOperations:
         # Create a dummy database file
         db_path.touch()
 
-        detected_db, detected_files = detect_ibi_structure(mock_ibi_structure["root"])
+        detected_db, detected_files, detected_backup = detect_ibi_structure(
+            mock_ibi_structure["root"]
+        )
         assert detected_db == db_path
         assert detected_files == files_path
+        # detected_backup may be None (backup is optional)
 
     def test_connect_to_database_success(self, mock_database):
         """Test successful database connection."""
@@ -223,5 +227,8 @@ class TestDatabaseQueries:
         # Check that timestamps are reasonable (around 2022)
         for file_entry in files_with_timestamps:
             timestamp = file_entry["file"]["cTime"]
-            # Should be roughly around 2022 (Unix timestamp)
+            # Convert to seconds if in milliseconds (real ibi format uses milliseconds)
+            if timestamp > 4000000000:  # If > year 2095, it's in milliseconds
+                timestamp = timestamp / 1000.0
+            # Should be roughly around 2022 (Unix timestamp in seconds)
             assert 1600000000 < timestamp < 1700000000
