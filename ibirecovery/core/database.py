@@ -93,8 +93,10 @@ def connect_db_readonly(db_path: Path) -> sqlite3.Connection:
         # First try direct URI syntax for read-only access
         conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
         conn.row_factory = sqlite3.Row
-        # Test if we can actually query the database
-        conn.execute("SELECT 1").fetchone()
+        # Test if we can actually query the database with a real table
+        conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' LIMIT 1"
+        ).fetchone()
         return conn
     except sqlite3.Error:
         # Fallback: copy database to temporary location for read access
