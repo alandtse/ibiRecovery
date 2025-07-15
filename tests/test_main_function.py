@@ -120,7 +120,7 @@ class TestMainFunction:
 
         with patch(
             "sys.argv",
-            ["extract_files.py", ibi_root, output_dir, "--dedup", "--use-hardlinks"],
+            ["extract_files.py", ibi_root, output_dir, "--dedup", "hardlinks"],
         ):
             with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
                 main()
@@ -470,7 +470,7 @@ class TestMainFunctionIntegration:
             "--export-dir",
             export_dir,
             "--dedup",
-            "--use-hardlinks",
+            "hardlinks",
             "--verify-sample",
             "10",
             "--resume",

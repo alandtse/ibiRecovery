@@ -7,7 +7,7 @@ This script extracts files from recovered ibi databases with advanced features:
 - Auto-detects ibi directory structure from root path
 - Progress bars for file operations
 - Resumable operations using rsync with fallback
-- Default: Extract by albums + orphaned files (recommended)
+- Default: Extract by albums + unorganized files (recommended)
 - Option: Extract by file type (images, videos, documents)
 - Always: Ensures 100% file recovery including orphaned content
 
@@ -329,20 +329,27 @@ def get_best_timestamp(file_metadata: Dict[str, Any]) -> Optional[float]:
     return None
 
 
-def get_time_organized_path(
-    base_dir: Path, filename: str, file_metadata: Dict[str, Any]
+def get_organized_path(
+    base_dir: Path,
+    filename: str,
+    file_metadata: Dict[str, Any],
+    use_time_organization: bool = True,
 ) -> Path:
     """
-    Get the time-organized path for a file within the base directory.
+    Get the organized path for a file within the base directory.
 
     Args:
         base_dir: Base directory for organization
         filename: Original filename
         file_metadata: File metadata dictionary
+        use_time_organization: If True, organize by time; if False, use flat structure
 
     Returns:
-        Path organized as base_dir/YYYY/MM/filename
+        Path organized as base_dir/YYYY/MM/filename or base_dir/filename
     """
+    if not use_time_organization:
+        return base_dir / filename
+
     timestamp = get_best_timestamp(file_metadata)
 
     if timestamp:
@@ -355,6 +362,15 @@ def get_time_organized_path(
         # Fallback: put in a "Unknown_Date" subdirectory
         unknown_dir = base_dir / "Unknown_Date"
         return unknown_dir / filename
+
+
+def get_time_organized_path(
+    base_dir: Path, filename: str, file_metadata: Dict[str, Any]
+) -> Path:
+    """Legacy function - use get_organized_path instead"""
+    return get_organized_path(
+        base_dir, filename, file_metadata, use_time_organization=True
+    )
 
 
 def set_file_metadata(
@@ -1774,12 +1790,13 @@ def extract_by_albums(
     use_hardlinks: bool = True,
     use_symlinks: bool = False,
     fix_metadata: bool = True,
+    flat_albums: bool = False,
 ) -> Tuple[int, int]:
-    """Extract files organized by albums, with orphaned files in a separate folder."""
+    """Extract files organized by albums, with unorganized files in a separate folder."""
 
     # Group files by their primary album (first album if multiple)
     album_files = defaultdict(list)
-    orphaned_files = []
+    unorganized_files = []
 
     for item in files_with_albums:
         if item["albums"]:
@@ -1787,11 +1804,11 @@ def extract_by_albums(
             primary_album = item["albums"][0]["name"]
             album_files[primary_album].append(item)
         else:
-            orphaned_files.append(item)
+            unorganized_files.append(item)
 
     # Calculate size statistics for albums
     album_sizes = {}
-    orphaned_size = 0
+    unorganized_size = 0
     total_target_size = 0
 
     for album_name, files in album_files.items():
@@ -1799,19 +1816,21 @@ def extract_by_albums(
         album_sizes[album_name] = album_size
         total_target_size += album_size
 
-    for item in orphaned_files:
+    for item in unorganized_files:
         size = item["file"]["size"] or 0
-        orphaned_size += size
+        unorganized_size += size
         total_target_size += size
 
-    print(f"Found {len(album_files)} albums and {len(orphaned_files)} orphaned files")
+    print(
+        f"Found {len(album_files)} albums and {len(unorganized_files)} unorganized files"
+    )
     print(f"Total size to extract: {format_size(total_target_size)}")
     print()
 
     total_extracted = 0
     total_size_extracted = 0
     total_files = sum(len(files) for files in album_files.values()) + len(
-        orphaned_files
+        unorganized_files
     )
 
     # Determine copy function and setup deduplication tracking
@@ -1875,15 +1894,27 @@ def extract_by_albums(
                 if copy_files:
                     source_path = find_source_file(files_dir, file_record["contentID"])
                     if source_path:
-                        dest_path = album_dir / file_record["name"]
-                        # Handle duplicate filenames
+                        # Use conditional organization within album folder
+                        dest_path = get_organized_path(
+                            album_dir,
+                            file_record["name"],
+                            file_record,
+                            use_time_organization=not flat_albums,
+                        )
+                        # Handle duplicate filenames within time-organized structure
                         counter = 1
                         original_dest = dest_path
                         while dest_path.exists() and not resume:
                             stem = original_dest.stem
                             suffix = original_dest.suffix
-                            dest_path = album_dir / f"{stem}_{counter}{suffix}"
+                            # Keep the time-organized directory structure
+                            dest_path = (
+                                original_dest.parent / f"{stem}_{counter}{suffix}"
+                            )
                             counter += 1
+
+                        # Create directory structure
+                        dest_path.parent.mkdir(parents=True, exist_ok=True)
 
                         # Use deduplication if enabled
                         if dedup:
@@ -1958,22 +1989,22 @@ def extract_by_albums(
         total_extracted += extracted_count
         print()
 
-    # Extract orphaned files
-    if orphaned_files:
-        # Check for interrupt before orphaned files
+    # Extract unorganized files (in DB but not in albums)
+    if unorganized_files:
+        # Check for interrupt before unorganized files
         if check_interrupt():
             return total_extracted, total_size_extracted
 
-        extraction_state.current_operation = "Extracting orphaned files"
+        extraction_state.current_operation = "Extracting unorganized files"
 
-        orphaned_dir = output_dir / "Unorganized"
+        unorganized_dir = output_dir / "Unorganized"
         print(
-            f"Extracting orphaned files: Unorganized (time-organized) ({len(orphaned_files)} files, {format_size(orphaned_size)})"
+            f"Extracting unorganized files: Unorganized (time-organized) ({len(unorganized_files)} files, {format_size(unorganized_size)})"
         )
 
-        desc = f"  Unorganized ({format_size(orphaned_size)})"
+        desc = f"  Unorganized ({format_size(unorganized_size)})"
         with tqdm(
-            orphaned_files,
+            unorganized_files,
             desc=desc,
             unit="files",
             leave=False,
@@ -1984,7 +2015,7 @@ def extract_by_albums(
             extracted_count = 0
             extracted_size = 0
             for item in pbar:
-                # Check for interrupt during orphaned files
+                # Check for interrupt during unorganized files
                 if check_interrupt():
                     extraction_state.total_files_extracted += extracted_count
                     extraction_state.total_size_extracted += extracted_size
@@ -1999,9 +2030,12 @@ def extract_by_albums(
                 if copy_files:
                     source_path = find_source_file(files_dir, file_record["contentID"])
                     if source_path:
-                        # Use time-based organization within Unorganized folder
-                        dest_path = get_time_organized_path(
-                            orphaned_dir, file_record["name"], file_record
+                        # Use conditional organization within Unorganized folder
+                        dest_path = get_organized_path(
+                            unorganized_dir,
+                            file_record["name"],
+                            file_record,
+                            use_time_organization=not flat_albums,
                         )
 
                         # Create directory structure
@@ -2086,7 +2120,7 @@ def extract_by_albums(
 
         if copy_files:
             print(
-                f"  Extracted {extracted_count}/{len(orphaned_files)} files ({format_size(extracted_size)})"
+                f"  Extracted {extracted_count}/{len(unorganized_files)} files ({format_size(extracted_size)})"
             )
         total_extracted += extracted_count
         print()
@@ -2114,6 +2148,169 @@ def extract_by_albums(
             print(f"   Deduplication rate: {dedup_rate:.1f}%")
 
     return total_extracted, total_size_extracted
+
+
+def find_existing_file_in_extraction(
+    extraction_dir: Path, filename: str, current_time_organized: bool = None
+) -> Optional[Path]:
+    """
+    Find an existing file in extraction directory, checking both flat and time-organized structures.
+
+    Args:
+        extraction_dir: Root extraction directory
+        filename: File to find
+        current_time_organized: If known, check specific structure first
+
+    Returns:
+        Path to existing file or None if not found
+    """
+    # Check flat structure first if specified or as fallback
+    if current_time_organized is False:
+        flat_path = extraction_dir / filename
+        if flat_path.exists():
+            return flat_path
+
+    # Check time-organized structure (scan year/month dirs)
+    if current_time_organized is True or current_time_organized is None:
+        if extraction_dir.exists():
+            for year_dir in extraction_dir.iterdir():
+                if not year_dir.is_dir() or not year_dir.name.isdigit():
+                    continue
+                for month_dir in year_dir.iterdir():
+                    if not month_dir.is_dir() or not month_dir.name.isdigit():
+                        continue
+                    time_path = month_dir / filename
+                    if time_path.exists():
+                        return time_path
+
+    # Check flat structure as fallback
+    if current_time_organized is None:
+        flat_path = extraction_dir / filename
+        if flat_path.exists():
+            return flat_path
+
+    return None
+
+
+def reorganize_extraction(
+    extraction_dir: Path,
+    files_with_albums: List[Dict[str, Any]],
+    target_time_organized: bool,
+) -> Tuple[int, int]:
+    """
+    Reorganize existing extraction between flat and time-organized structures.
+
+    Args:
+        extraction_dir: Directory containing extracted files
+        files_with_albums: Database file records
+        target_time_organized: True for time-organized, False for flat
+
+    Returns:
+        Tuple of (files_moved, total_files_processed)
+    """
+    print(f"🔄 Reorganizing extraction directory...")
+    print(
+        f"   Target structure: {'Time-organized' if target_time_organized else 'Flat'}"
+    )
+
+    files_moved = 0
+    total_processed = 0
+
+    # Process album files
+    album_files = defaultdict(list)
+    unorganized_files = []
+
+    for item in files_with_albums:
+        if item["albums"]:
+            primary_album = item["albums"][0]["name"]
+            album_files[primary_album].append(item)
+        else:
+            unorganized_files.append(item)
+
+    # Reorganize album files
+    for album_name, files in album_files.items():
+        safe_album_name = "".join(
+            c for c in album_name if c.isalnum() or c in (" ", "-", "_")
+        ).rstrip()
+        album_dir = extraction_dir / safe_album_name
+
+        for item in files:
+            file_record = item["file"]
+            filename = file_record["name"]
+
+            # Find existing file (auto-detect current structure)
+            old_path = find_existing_file_in_extraction(
+                album_dir, filename, current_time_organized=None
+            )
+
+            if not old_path:
+                total_processed += 1
+                continue
+
+            # Calculate new path
+            new_path = get_organized_path(
+                album_dir,
+                filename,
+                file_record,
+                use_time_organization=target_time_organized,
+            )
+
+            # Move if different
+            if old_path != new_path:
+                new_path.parent.mkdir(parents=True, exist_ok=True)
+                old_path.rename(new_path)
+                files_moved += 1
+
+            total_processed += 1
+
+    # Reorganize unorganized files
+    unorganized_dir = extraction_dir / "Unorganized"
+    if unorganized_dir.exists():
+        for item in unorganized_files:
+            file_record = item["file"]
+            filename = file_record["name"]
+
+            # Find existing file (auto-detect current structure)
+            old_path = find_existing_file_in_extraction(
+                unorganized_dir, filename, current_time_organized=None
+            )
+
+            if not old_path:
+                total_processed += 1
+                continue
+
+            # Calculate new path
+            new_path = get_organized_path(
+                unorganized_dir,
+                filename,
+                file_record,
+                use_time_organization=target_time_organized,
+            )
+
+            # Move if different
+            if old_path != new_path:
+                new_path.parent.mkdir(parents=True, exist_ok=True)
+                old_path.rename(new_path)
+                files_moved += 1
+
+            total_processed += 1
+
+    # Clean up empty directories
+    _cleanup_empty_directories(extraction_dir)
+
+    return files_moved, total_processed
+
+
+def _cleanup_empty_directories(root_dir: Path):
+    """Recursively remove empty directories."""
+    for dirpath in sorted(
+        root_dir.rglob("*"), key=lambda p: len(p.parts), reverse=True
+    ):
+        if dirpath.is_dir() and not any(dirpath.iterdir()):
+            try:
+                dirpath.rmdir()
+            except OSError:
+                pass  # Directory not empty or permission issue
 
 
 def extract_by_type(
@@ -2427,15 +2624,13 @@ def main():
         description="Extract files from ibi recovery database with enhanced features",
         epilog="""
 Organization modes:
-  albums (default): Extract by albums with orphaned files in "Unorganized" folder
+  albums (default): Extract by albums with unorganized files in "Unorganized" folder
   type: Extract by file type (Images, Videos, Documents, Other)
 
 Advanced options:
   --resume: Resume interrupted transfers (default: enabled)
-  --no-rsync: Force use of Python copy instead of rsync
-  --dedup: Enable file deduplication using hardlinks/symlinks (default: enabled)
-  --use-symlinks: Use symlinks for deduplication (less robust, works cross-filesystem)
-  --use-hardlinks: Use hardlinks for deduplication (default: more robust than symlinks)
+  --copy-method: Choose copy method (rsync/python, default: rsync)
+  --dedup: Deduplication method (none/hardlinks/symlinks, default: hardlinks)
   --db-path: Override auto-detected database path
   --files-path: Override auto-detected files path
         """,
@@ -2465,7 +2660,7 @@ Advanced options:
         "--resume",
         action="store_true",
         default=True,
-        help="Resume interrupted transfers (default: enabled)",
+        help="Resume interrupted transfers (default: enabled, use --no-resume to disable)",
     )
     parser.add_argument(
         "--no-resume",
@@ -2474,9 +2669,10 @@ Advanced options:
         help="Disable resume functionality",
     )
     parser.add_argument(
-        "--no-rsync",
-        action="store_true",
-        help="Force use of Python copy instead of rsync",
+        "--copy-method",
+        choices=["rsync", "python"],
+        default="rsync",
+        help="Copy method to use (default: rsync, fallback to python if rsync unavailable)",
     )
     parser.add_argument(
         "--db-path", type=Path, help="Override auto-detected database path"
@@ -2515,26 +2711,9 @@ Advanced options:
     )
     parser.add_argument(
         "--dedup",
-        action="store_true",
-        default=True,
-        help="Enable file deduplication using hardlinks/symlinks (default: enabled)",
-    )
-    parser.add_argument(
-        "--no-dedup",
-        dest="dedup",
-        action="store_false",
-        help="Disable file deduplication (always copy files)",
-    )
-    parser.add_argument(
-        "--use-symlinks",
-        action="store_true",
-        help="Use symlinks instead of hardlinks for deduplication (less robust but works cross-filesystem)",
-    )
-    parser.add_argument(
-        "--use-hardlinks",
-        action="store_true",
-        default=True,
-        help="Use hardlinks for deduplication (default: enabled, more robust than symlinks)",
+        choices=["none", "hardlinks", "symlinks"],
+        default="hardlinks",
+        help="Deduplication method (default: hardlinks, symlinks for cross-filesystem, none to disable)",
     )
     parser.add_argument(
         "--deduplicate-existing",
@@ -2561,6 +2740,16 @@ Advanced options:
     parser.add_argument(
         "--list-formats", action="store_true", help="List available export formats"
     )
+    parser.add_argument(
+        "--flat",
+        action="store_true",
+        help="Use flat album structure instead of time-organized subdirectories",
+    )
+    parser.add_argument(
+        "--reorganize",
+        action="store_true",
+        help="Reorganize existing extraction directory structure",
+    )
 
     args = parser.parse_args()
 
@@ -2573,10 +2762,14 @@ Advanced options:
             print(f"❌ Path is not a directory: {args.deduplicate_existing}")
             sys.exit(1)
 
+        # Convert dedup choice to boolean flags for existing function
+        use_hardlinks = args.dedup == "hardlinks"
+        use_symlinks = args.dedup == "symlinks"
+
         stats = deduplicate_existing_extraction(
             args.deduplicate_existing,
-            args.use_hardlinks,
-            args.use_symlinks,
+            use_hardlinks,
+            use_symlinks,
             args.dry_run,
         )
 
@@ -2589,6 +2782,28 @@ Advanced options:
                 f"\n✅ Deduplication complete! Saved {format_size(stats['space_saved'])} of disk space."
             )
         sys.exit(0)
+
+    # Handle reorganization mode
+    if args.reorganize:
+        if not args.output_dir:
+            print("❌ output_dir is required for reorganization")
+            sys.exit(1)
+        if not output_dir.exists():
+            print(f"❌ Extraction directory does not exist: {output_dir}")
+            sys.exit(1)
+        if not output_dir.is_dir():
+            print(f"❌ Path is not a directory: {output_dir}")
+            sys.exit(1)
+
+        # We need database connection for reorganization
+        if not args.ibi_root:
+            print("❌ ibi_root is required for reorganization")
+            sys.exit(1)
+
+        # Continue to database loading below...
+        reorganize_mode = True
+    else:
+        reorganize_mode = False
 
     # Handle format listing
     if args.list_formats:
@@ -2615,10 +2830,11 @@ Advanced options:
         and not args.list_only
         and not args.stats
         and not args.deduplicate_existing
+        and not args.reorganize
         and not args.output_dir
     ):
         parser.error(
-            "output_dir is required unless using --verify, --verify-metadata, --export, --list-only, --stats, or --deduplicate-existing"
+            "output_dir is required unless using --verify, --verify-metadata, --export, --list-only, --stats, --deduplicate-existing, or --reorganize"
         )
 
     # Set default export directory
@@ -2671,7 +2887,7 @@ Advanced options:
         sys.exit(1)
 
     # Check rsync availability
-    use_rsync = not args.no_rsync and check_rsync_available()
+    use_rsync = args.copy_method == "rsync" and check_rsync_available()
     if not args.list_only:
         if use_rsync:
             print("✅ Using rsync for file operations (resumable)")
@@ -2692,6 +2908,8 @@ Advanced options:
         files_with_albums, stats = core_get_merged_files_with_albums(
             db_path, backup_db_path
         )
+        # Open connection for verification/metadata operations
+        conn = connect_db(db_path)
     else:
         # Fallback to single database
         conn = connect_db(db_path)
@@ -2715,14 +2933,14 @@ Advanced options:
     # Show detailed statistics
     if args.stats or True:  # Always show basic stats
         organized_count = sum(1 for item in files_with_albums if item["albums"])
-        orphaned_count = len(files_with_albums) - organized_count
+        unorganized_count = len(files_with_albums) - organized_count
         album_names = set()
         for item in files_with_albums:
             for album in item["albums"]:
                 album_names.add(album["name"])
 
         print(f"  Organized in albums: {organized_count} files")
-        print(f"  Orphaned (no albums): {orphaned_count} files")
+        print(f"  Unorganized (no albums): {unorganized_count} files")
         print(f"  Total albums: {len(album_names)}")
 
         if args.stats:
@@ -2803,6 +3021,24 @@ Advanced options:
         conn.close()
         return
 
+    # Handle reorganization mode
+    if reorganize_mode:
+        print("=" * 60)
+        print("EXTRACTION REORGANIZATION")
+        print("=" * 60)
+
+        files_moved, total_processed = reorganize_extraction(
+            output_dir, files_with_albums, target_time_organized=not args.flat
+        )
+
+        print(f"\n✅ Reorganization complete!")
+        print(f"   Files moved: {files_moved}")
+        print(f"   Files processed: {total_processed}")
+        print(f"   Structure: {'Flat' if args.flat else 'Time-organized'}")
+
+        conn.close()
+        return
+
     # Handle metadata verification mode
     if args.verify_metadata:
         if not HAS_PIL:
@@ -2854,10 +3090,11 @@ Advanced options:
             not args.list_only,
             use_rsync,
             args.resume,
-            args.dedup,
-            args.use_hardlinks,
-            args.use_symlinks,
+            args.dedup != "none",
+            args.dedup == "hardlinks",
+            args.dedup == "symlinks",
             args.fix_metadata,
+            args.flat,
         )
 
     if not args.list_only:

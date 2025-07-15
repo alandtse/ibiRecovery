@@ -95,26 +95,26 @@ class TestExtractionIntegration:
 
         # Check directory structure (spaces are preserved in album names)
         family_vacation_dir = output_dir / "Family Vacation"
-        orphaned_dir = output_dir / "Unorganized"
+        unorganized_dir = output_dir / "Unorganized"
 
         assert family_vacation_dir.exists()
-        assert orphaned_dir.exists()
+        assert unorganized_dir.exists()
 
-        # Check files were copied
-        assert (family_vacation_dir / "test1.jpg").exists()
-        assert (family_vacation_dir / "test2.mp4").exists()
-        # Orphaned files are now organized by time: Unorganized/YYYY/MM/filename
-        assert (orphaned_dir / "2021" / "12" / "test3.png").exists()
+        # Check files were copied with time organization (all test files are from 2021/12)
+        assert (family_vacation_dir / "2021" / "12" / "test1.jpg").exists()
+        assert (family_vacation_dir / "2021" / "12" / "test2.mp4").exists()
+        # Unorganized files are now organized by time: Unorganized/YYYY/MM/filename
+        assert (unorganized_dir / "2021" / "12" / "test3.png").exists()
 
         # Verify file contents
         assert (
-            family_vacation_dir / "test1.jpg"
+            family_vacation_dir / "2021" / "12" / "test1.jpg"
         ).read_bytes() == b"fake jpeg content" * 1000
         assert (
-            family_vacation_dir / "test2.mp4"
+            family_vacation_dir / "2021" / "12" / "test2.mp4"
         ).read_bytes() == b"fake mp4 content" * 5000
         assert (
-            orphaned_dir / "2021" / "12" / "test3.png"
+            unorganized_dir / "2021" / "12" / "test3.png"
         ).read_bytes() == b"fake png content" * 500
 
     def test_extract_by_albums_with_deduplication(
@@ -169,9 +169,9 @@ class TestExtractionIntegration:
 
         assert total_extracted == 2
 
-        # Both files should exist
-        album_a_file = output_dir / "Album A" / "photo1.jpg"
-        album_b_file = output_dir / "Album B" / "photo1_copy.jpg"
+        # Both files should exist in time-organized structure
+        album_a_file = output_dir / "Album A" / "2021" / "12" / "photo1.jpg"
+        album_b_file = output_dir / "Album B" / "2021" / "12" / "photo1_copy.jpg"
 
         assert album_a_file.exists()
         assert album_b_file.exists()
@@ -276,7 +276,7 @@ class TestExtractionIntegration:
 
         assert total_extracted_1 == 1
 
-        dest_file = output_dir / "Test Album" / "test.jpg"
+        dest_file = output_dir / "Test Album" / "2021" / "12" / "test.jpg"
         assert dest_file.exists()
 
         # Get original file timestamp
