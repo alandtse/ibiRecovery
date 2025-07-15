@@ -57,6 +57,8 @@ def mock_database(mock_ibi_structure):
             imageDate REAL,
             videoDate REAL,
             cTime REAL,
+            uTime REAL,
+            mTime REAL,
             birthTime REAL,
             imageLatitude REAL,
             imageLongitude REAL,
@@ -127,6 +129,8 @@ def mock_database(mock_ibi_structure):
             1640995200.0,
             None,
             1640995200.0,
+            1640995100.0,  # uTime
+            1640995150.0,  # mTime
             1640995200.0,
             37.7749,
             -122.4194,
@@ -155,6 +159,8 @@ def mock_database(mock_ibi_structure):
             None,
             1640995300.0,
             1640995300.0,
+            1640995200.0,  # uTime
+            1640995250.0,  # mTime
             1640995300.0,
             None,
             None,
@@ -183,6 +189,8 @@ def mock_database(mock_ibi_structure):
             1640995400.0,
             None,
             1640995400.0,
+            1640995300.0,  # uTime
+            1640995350.0,  # mTime
             1640995400.0,
             None,
             None,
@@ -211,6 +219,8 @@ def mock_database(mock_ibi_structure):
             1640995500.0,
             None,
             1640995500.0,
+            1640995400.0,  # uTime
+            1640995450.0,  # mTime
             1640995500.0,
             40.7128,
             -74.0060,
@@ -233,8 +243,8 @@ def mock_database(mock_ibi_structure):
     for file_data in test_files:
         cursor.execute(
             """
-            INSERT INTO Files (id, name, contentID, mimeType, size, createdTime, modifiedTime, imageDate, videoDate, cTime, birthTime, imageLatitude, imageLongitude, imageAltitude, imageCity, imageProvince, imageCountry, videoLatitude, videoLongitude, videoAltitude, videoCity, videoProvince, videoCountry, imageCameraMake, imageCameraModel, description)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO Files (id, name, contentID, mimeType, size, createdTime, modifiedTime, imageDate, videoDate, cTime, uTime, mTime, birthTime, imageLatitude, imageLongitude, imageAltitude, imageCity, imageProvince, imageCountry, videoLatitude, videoLongitude, videoAltitude, videoCity, videoProvince, videoCountry, imageCameraMake, imageCameraModel, description)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
             file_data,
         )
