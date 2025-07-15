@@ -84,7 +84,35 @@ def connect_db(db_path: Path) -> sqlite3.Connection:
         sys.exit(1)
 
 
-def connect_db_readonly(db_path: Path) -> sqlite3.Connection:
+class ReadOnlyConnection:
+    """Wrapper for sqlite3.Connection that tracks temporary files for cleanup."""
+
+    def __init__(self, conn: sqlite3.Connection, temp_db_path: str = None):
+        self.conn = conn
+        self.temp_db_path = temp_db_path
+
+    def __getattr__(self, name):
+        return getattr(self.conn, name)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def close(self):
+        if self.conn:
+            self.conn.close()
+        if self.temp_db_path:
+            import os
+
+            try:
+                os.unlink(self.temp_db_path)
+            except OSError:
+                pass  # File might already be deleted
+
+
+def connect_db_readonly(db_path: Path) -> ReadOnlyConnection:
     """Connect to the SQLite database in read-only mode."""
     import shutil
     import tempfile
@@ -97,7 +125,7 @@ def connect_db_readonly(db_path: Path) -> sqlite3.Connection:
         conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' LIMIT 1"
         ).fetchone()
-        return conn
+        return ReadOnlyConnection(conn)
     except sqlite3.Error:
         # Fallback: copy database to temporary location for read access
         # This handles mounted filesystems where URI syntax fails
@@ -106,9 +134,7 @@ def connect_db_readonly(db_path: Path) -> sqlite3.Connection:
                 shutil.copy2(db_path, tmp_file.name)
                 conn = sqlite3.connect(tmp_file.name)
                 conn.row_factory = sqlite3.Row
-                # Mark connection with temp file path for cleanup
-                conn._temp_db_path = tmp_file.name
-                return conn
+                return ReadOnlyConnection(conn, tmp_file.name)
         except Exception as e:
             print(f"Error connecting to database in read-only mode: {e}")
             raise
@@ -190,16 +216,7 @@ def get_merged_files_with_albums(
                 stats["backup_recovered"] = 0
 
             # Clean up temporary database file if it exists
-            if hasattr(backup_conn, "_temp_db_path"):
-                import os
-
-                backup_conn.close()
-                try:
-                    os.unlink(backup_conn._temp_db_path)
-                except OSError:
-                    pass  # File might already be deleted
-            else:
-                backup_conn.close()
+            backup_conn.close()
 
         except sqlite3.Error as e:
             print(f"⚠️  Warning: Could not read backup database: {e}")
