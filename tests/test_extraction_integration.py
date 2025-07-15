@@ -647,8 +647,23 @@ class TestErrorHandling:
         )
 
         # Should extract files despite name issues
-        assert total_extracted >= 0  # May succeed or fail depending on implementation
+        assert total_extracted == 2
 
-        # Should create some form of safe directory names
-        created_dirs = list(output_dir.glob("*"))
-        assert len(created_dirs) > 0  # Some directories should be created
+        # Should create specific directories
+        # Empty album name should create Unknown_Album_Empty
+        unknown_album_dir = output_dir / "Unknown_Album_Empty"
+        assert (
+            unknown_album_dir.exists()
+        ), "Empty album name should create Unknown_Album_Empty directory"
+
+        # Album with slashes should have slashes replaced with underscores
+        album_with_slashes_dir = output_dir / "Album_With_Slashes"
+        assert (
+            album_with_slashes_dir.exists()
+        ), "Album with slashes should have slashes replaced with underscores"
+
+        # Should NOT have files in root directory
+        root_files = [f for f in output_dir.iterdir() if f.is_file()]
+        assert (
+            len(root_files) == 0
+        ), f"Files should not be extracted to root directory: {root_files}"

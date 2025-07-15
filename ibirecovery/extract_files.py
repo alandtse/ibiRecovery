@@ -772,6 +772,67 @@ def get_all_files_with_albums(
     return files_with_albums, stats
 
 
+def sanitize_album_name(album_name: str) -> tuple[str, bool]:
+    """
+    Sanitize album name for filesystem compatibility while preserving as much as possible.
+
+    Returns:
+        tuple: (sanitized_name, name_was_changed)
+    """
+    if not album_name:
+        return "Unknown_Album_Empty", True
+
+    original_name = album_name
+
+    # First, strip leading/trailing whitespace
+    sanitized = album_name.strip()
+
+    # If only whitespace, create descriptive name
+    if not sanitized:
+        return "Unknown_Album_Whitespace", True
+
+    # Replace problematic characters with safe alternatives
+    char_replacements = {
+        "/": "_",  # Forward slash -> underscore
+        "\\": "_",  # Backslash -> underscore
+        ":": "-",  # Colon -> dash
+        "*": "_star_",  # Asterisk -> word
+        "?": "_",  # Question mark -> underscore
+        '"': "'",  # Double quote -> single quote
+        "<": "(",  # Less than -> parenthesis
+        ">": ")",  # Greater than -> parenthesis
+        "|": "_",  # Pipe -> underscore
+        "\t": " ",  # Tab -> space
+        "\n": " ",  # Newline -> space
+        "\r": " ",  # Carriage return -> space
+    }
+
+    # Apply character replacements
+    for bad_char, replacement in char_replacements.items():
+        sanitized = sanitized.replace(bad_char, replacement)
+
+    # Collapse multiple spaces into single spaces
+    sanitized = " ".join(sanitized.split())
+
+    # Remove any remaining non-printable characters
+    sanitized = "".join(c for c in sanitized if c.isprintable())
+
+    # Handle edge cases after sanitization
+    if not sanitized:
+        # If nothing printable remains, create descriptive name
+        non_printable_count = len([c for c in original_name if not c.isprintable()])
+        return f"Unknown_Album_NonPrintable_{non_printable_count}chars", True
+
+    # Limit length to avoid filesystem issues (most filesystems support 255 chars)
+    if len(sanitized) > 100:  # Conservative limit for compatibility
+        sanitized = sanitized[:97] + "..."
+
+    # Check if any changes were made
+    name_changed = sanitized != original_name
+
+    return sanitized, name_changed
+
+
 def format_size(size_bytes: int) -> str:
     """Format file size in human readable format."""
     if size_bytes == 0:
@@ -1853,9 +1914,12 @@ def extract_by_albums(
 
         extraction_state.current_operation = f"Extracting album: {album_name}"
 
-        safe_album_name = "".join(
-            c for c in album_name if c.isalnum() or c in (" ", "-", "_")
-        ).rstrip()
+        # Enhanced album name sanitization with preservation and messaging
+        safe_album_name, name_changed = sanitize_album_name(album_name)
+
+        if name_changed:
+            print(f"  📝 Album name sanitized: '{album_name}' → '{safe_album_name}'")
+
         album_dir = output_dir / safe_album_name
 
         print(f"Extracting album: {album_name} ({len(files)} files)")
@@ -2229,9 +2293,14 @@ def reorganize_extraction(
 
     # Reorganize album files
     for album_name, files in album_files.items():
-        safe_album_name = "".join(
-            c for c in album_name if c.isalnum() or c in (" ", "-", "_")
-        ).rstrip()
+        # Enhanced album name sanitization with preservation and messaging
+        safe_album_name, name_changed = sanitize_album_name(album_name)
+
+        if name_changed:
+            print(
+                f"  📝 Album name sanitized during reorganization: '{album_name}' → '{safe_album_name}'"
+            )
+
         album_dir = extraction_dir / safe_album_name
 
         for item in files:
