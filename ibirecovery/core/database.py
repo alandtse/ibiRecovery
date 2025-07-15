@@ -86,14 +86,30 @@ def connect_db(db_path: Path) -> sqlite3.Connection:
 
 def connect_db_readonly(db_path: Path) -> sqlite3.Connection:
     """Connect to the SQLite database in read-only mode."""
+    import shutil
+    import tempfile
+
     try:
-        # Use URI syntax for read-only access to avoid WAL mode issues
+        # First try direct URI syntax for read-only access
         conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
         conn.row_factory = sqlite3.Row
+        # Test if we can actually query the database
+        conn.execute("SELECT 1").fetchone()
         return conn
-    except sqlite3.Error as e:
-        print(f"Error connecting to database in read-only mode: {e}")
-        raise
+    except sqlite3.Error:
+        # Fallback: copy database to temporary location for read access
+        # This handles mounted filesystems where URI syntax fails
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
+                shutil.copy2(db_path, tmp_file.name)
+                conn = sqlite3.connect(tmp_file.name)
+                conn.row_factory = sqlite3.Row
+                # Mark connection with temp file path for cleanup
+                conn._temp_db_path = tmp_file.name
+                return conn
+        except Exception as e:
+            print(f"Error connecting to database in read-only mode: {e}")
+            raise
 
 
 def get_merged_files_with_albums(
@@ -171,7 +187,17 @@ def get_merged_files_with_albums(
                 print("ℹ️  No additional files found in backup database")
                 stats["backup_recovered"] = 0
 
-            backup_conn.close()
+            # Clean up temporary database file if it exists
+            if hasattr(backup_conn, "_temp_db_path"):
+                import os
+
+                backup_conn.close()
+                try:
+                    os.unlink(backup_conn._temp_db_path)
+                except OSError:
+                    pass  # File might already be deleted
+            else:
+                backup_conn.close()
 
         except sqlite3.Error as e:
             print(f"⚠️  Warning: Could not read backup database: {e}")
