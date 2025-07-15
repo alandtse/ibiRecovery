@@ -9,15 +9,18 @@ This repository contains **complete reverse-engineered documentation** for ibi d
 ## 📋 What's Included
 
 ### 1. Complete Schema Documentation
+
 - **`schema_documentation.md`** - Full SQLite schema with all tables, relationships, and field descriptions
 - **`api_specification.json`** - Machine-readable API spec for automated tool development
 - **`reference_implementation.py`** - Working Python parser demonstrating all major operations
 
-### 2. Analysis & Insights  
+### 2. Analysis & Insights
+
 - **`metadata_strategy.md`** - What metadata to preserve vs. what to filter out
 - **`metadata_strategy.md`** - Best practices for metadata preservation and portability
 
 ### 3. Working Recovery Tools
+
 - Complete extraction scripts with 100% verified recovery rate
 - Export tools for popular photo management software (Lightroom, digiKam, Apple Photos)
 - Metadata verification and cleaning utilities
@@ -25,6 +28,7 @@ This repository contains **complete reverse-engineered documentation** for ibi d
 ## 🚀 Quick Start for Tool Developers
 
 ### Basic Database Parsing
+
 ```python
 from docs.reference_implementation import IbiDatabaseParser
 
@@ -44,6 +48,7 @@ print(f"Recovery rate: {recovery['recovery_rate']:.1f}%")
 ```
 
 ### File Storage Access
+
 ```python
 # ibi uses this formula for file storage:
 content_id = "jT9JduP8vIHpwuY32gLQ"
@@ -52,43 +57,47 @@ file_path = f"/files/{content_id[0]}/{content_id}"
 ```
 
 ### Key Database Queries
+
 ```sql
 -- Get all recoverable files
-SELECT f.name, f.contentID, f.mimeType 
-FROM Files f 
+SELECT f.name, f.contentID, f.mimeType
+FROM Files f
 WHERE f.contentID IS NOT NULL;
 
 -- Get AI content tags
-SELECT f.name, ft.tag 
-FROM Files f 
-JOIN FilesTags ft ON f.id = ft.fileID 
+SELECT f.name, ft.tag
+FROM Files f
+JOIN FilesTags ft ON f.id = ft.fileID
 WHERE ft.auto = 1;
 
 -- Get album organization
-SELECT fg.name, f.name 
-FROM FileGroups fg 
-JOIN FileGroupFiles fgf ON fg.id = fgf.fileGroupID 
+SELECT fg.name, f.name
+FROM FileGroups fg
+JOIN FileGroupFiles fgf ON fg.id = fgf.fileGroupID
 JOIN Files f ON fgf.fileID = f.id;
 ```
 
 ## 🎁 What Makes This Valuable
 
 ### For Data Recovery Professionals:
+
 - **100% recovery rate verified** on test databases
-- **5,312+ AI content tags** provide automatic photo categorization  
+- **5,312+ AI content tags** provide automatic photo categorization
 - **50+ user albums** with meaningful family names
 - **Complete EXIF/GPS preservation** for geotagged photos
 - **Standard export formats** for popular photo software
 
 ### For Families:
+
 - Recover not just files, but **complete photo organization**
 - Get **searchable content tags** ("person", "child", "beach", "graduation")
 - Preserve **album structure** ("Jon's graduation", "Hawaii 2010")
 - **GPS locations** and **camera metadata** intact
 
 ### For Developers:
+
 - **Clean, documented schema** - no reverse engineering needed
-- **Reference implementation** to get started immediately  
+- **Reference implementation** to get started immediately
 - **Standard export formats** - Lightroom, digiKam, Apple Photos, XMP
 - **Smart filtering** - removes ibi-specific data automatically
 
@@ -104,6 +113,7 @@ JOIN Files f ON fgf.fileID = f.id;
 ## 🛠️ Tool Development Guidelines
 
 ### ✅ Include (Portable Data):
+
 - AI-generated content tags
 - User-created album organization
 - Original camera EXIF data
@@ -111,6 +121,7 @@ JOIN Files f ON fgf.fileID = f.id;
 - Capture timestamps
 
 ### ❌ Exclude (ibi-Specific Data):
+
 - auth0 user IDs and authentication data
 - ibi sharing system IDs (non-functional)
 - Internal permission systems
@@ -120,18 +131,21 @@ JOIN Files f ON fgf.fileID = f.id;
 ## 📄 Standard Export Formats
 
 ### Adobe Lightroom
+
 ```csv
 Filename,Keywords,Caption,Album,GPS
 IMG_001.jpg,"person; child; beach","Family vacation","Hawaii 2010","21.3099,-157.8581"
 ```
 
 ### digiKam Hierarchical Tags
+
 ```csv
 Name,Tags,Album,Date,Latitude,Longitude
 IMG_001.jpg,"People/person|Places/Beach/beach","Hawaii 2010","2018-03-15",21.3099,-157.8581
 ```
 
 ### XMP Sidecar Files
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <x:xmpmeta xmlns:x="adobe:ns:meta/">
@@ -151,6 +165,7 @@ IMG_001.jpg,"People/person|Places/Beach/beach","Hawaii 2010","2018-03-15",21.309
 ## 🔬 Research Applications
 
 This schema enables research into:
+
 - **Photo management system design**
 - **AI content recognition accuracy over time**
 - **User organization patterns** in family photo collections
@@ -160,6 +175,7 @@ This schema enables research into:
 ## 📜 License & Usage
 
 **GPLv3** - Use freely with source code sharing:
+
 - ✅ Commercial data recovery services (must open source improvements)
 - ✅ Open source recovery tools (contributions must be GPLv3)
 - ✅ Academic research
@@ -171,18 +187,21 @@ This schema enables research into:
 ## 🤝 Contributing to the Community
 
 ### Share Your Discoveries
+
 - **Schema variations** found in different ibi versions
 - **Additional metadata fields** not documented here
 - **Recovery edge cases** and solutions
 - **Export format improvements**
 
 ### Extend the Tools
+
 - **Web interfaces** for non-technical users
 - **Batch processing** for professional recovery services
 - **Integration with existing photo software**
 - **Mobile apps** for on-device recovery
 
 ### Research Applications
+
 - **Machine learning** on photo organization patterns
 - **Digital preservation** best practices
 - **Photo management UX** insights
@@ -190,17 +209,20 @@ This schema enables research into:
 ## 📞 Community & Support
 
 ### For Data Recovery Professionals:
+
 - Use these tools to offer **complete photo recovery** services
 - **5,312 AI tags** make recovery much more valuable than just file extraction
 - **Album preservation** helps families get organized collections back
 
 ### For Developers:
+
 - **docs/reference_implementation.py** gets you started immediately
 - **schema_documentation.md** has everything you need to build tools
 - **api_specification.json** enables automated code generation
 - **GitHub Repository**: [github.com/alandtse/ibiRecovery](https://github.com/alandtse/ibiRecovery)
 
 ### For Researchers:
+
 - **Real-world photo management data** with user organization patterns
 - **AI content analysis** from actual consumer devices
 - **Temporal data** spanning 2017-2023 timeframe
@@ -210,9 +232,9 @@ This schema enables research into:
 This documentation transforms ibi data recovery from **"just getting files back"** to **"complete photo library reconstruction"** with:
 
 - Automatic content categorization (AI tags)
-- Preserved family organization (albums)  
+- Preserved family organization (albums)
 - Geographic context (GPS data)
 - Technical metadata (camera info)
 - Universal software compatibility
 
-**Result**: Families get back not just their photos, but their *organized, searchable photo libraries*.
+**Result**: Families get back not just their photos, but their _organized, searchable photo libraries_.

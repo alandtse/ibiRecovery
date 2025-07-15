@@ -14,6 +14,7 @@ This document provides complete schema documentation for ibi device databases re
 ## File Storage System
 
 ### Physical Storage Structure
+
 ```
 /restsdk/data/files/
 ├── a/               # Files with contentID starting with 'a'
@@ -25,12 +26,14 @@ This document provides complete schema documentation for ibi device databases re
 ```
 
 ### Storage Formula
+
 - **File Path**: `/files/{contentID[0]}/{contentID}`
 - **Example**: contentID `jT9JduP8vIHpwuY32gLQ` → `/files/j/jT9JduP8vIHpwuY32gLQ`
 
 ## Core Tables Schema
 
 ### Files Table (Primary Content)
+
 ```sql
 CREATE TABLE Files(
     id TEXT NOT NULL PRIMARY KEY,                    -- Unique file identifier
@@ -41,7 +44,7 @@ CREATE TABLE Files(
     birthTime INTEGER NOT NULL,                      -- Creation time (ms since epoch)
     cTime INTEGER NOT NULL,                          -- Data creation time
     uTime INTEGER,                                   -- Update time
-    mTime INTEGER,                                   -- Data modification time  
+    mTime INTEGER,                                   -- Data modification time
     size INTEGER NOT NULL DEFAULT 0,                 -- File size in bytes
     mimeType TEXT NOT NULL DEFAULT '',               -- MIME type
     storageID TEXT NOT NULL,                         -- Storage backend ('local')
@@ -49,7 +52,7 @@ CREATE TABLE Files(
     description TEXT NOT NULL DEFAULT '',            -- User description
     custom TEXT NOT NULL DEFAULT '',                 -- Internal hash/tracking
     creatorEntityID TEXT REFERENCES Entities(id),   -- User who created file
-    
+
     -- Image metadata
     imageDate INTEGER,                               -- Image capture date (ms)
     imageWidth INTEGER NOT NULL DEFAULT 0,
@@ -68,7 +71,7 @@ CREATE TABLE Files(
     imageCity TEXT NOT NULL DEFAULT '',              -- Location names
     imageProvince TEXT NOT NULL DEFAULT '',
     imageCountry TEXT NOT NULL DEFAULT '',
-    
+
     -- Video metadata
     videoDate INTEGER,                               -- Video capture date (ms)
     videoCodec TEXT NOT NULL DEFAULT '',
@@ -82,13 +85,13 @@ CREATE TABLE Files(
     videoCity TEXT NOT NULL DEFAULT '',              -- Location names
     videoProvince TEXT NOT NULL DEFAULT '',
     videoCountry TEXT NOT NULL DEFAULT '',
-    
+
     -- Audio metadata
     audioDuration REAL NOT NULL DEFAULT 0,
     audioTitle TEXT NOT NULL DEFAULT '',
     audioAlbum TEXT NOT NULL DEFAULT '',
     audioArtist TEXT NOT NULL DEFAULT '',
-    
+
     -- Additional fields...
     category INTEGER,                                -- File categorization
     month INTEGER NOT NULL DEFAULT 0,               -- Time grouping
@@ -97,6 +100,7 @@ CREATE TABLE Files(
 ```
 
 ### FileGroups Table (Albums/Collections)
+
 ```sql
 CREATE TABLE FileGroups(
     id TEXT NOT NULL PRIMARY KEY,                   -- Unique album identifier
@@ -115,6 +119,7 @@ CREATE TABLE FileGroups(
 ```
 
 ### FileGroupFiles Table (Many-to-Many Relationship)
+
 ```sql
 CREATE TABLE FileGroupFiles(
     id TEXT NOT NULL PRIMARY KEY,                   -- Unique relationship ID
@@ -129,6 +134,7 @@ CREATE TABLE FileGroupFiles(
 ```
 
 ### FilesTags Table (AI-Generated Content Tags)
+
 ```sql
 CREATE TABLE FilesTags(
     fileID TEXT NOT NULL REFERENCES Files(id),     -- File reference
@@ -138,6 +144,7 @@ CREATE TABLE FilesTags(
 ```
 
 ### Entities Table (Users/Devices)
+
 ```sql
 CREATE TABLE Entities(
     id TEXT NOT NULL PRIMARY KEY,                   -- Internal entity ID
@@ -154,6 +161,7 @@ CREATE TABLE Entities(
 ## Metadata Categories
 
 ### ✅ Portable/Useful Data
+
 - **AI Content Tags**: Computer vision analysis (5,312+ instances)
 - **Album Organization**: User-created collections with meaningful names
 - **GPS/Location Data**: Coordinates and place names from original photos
@@ -161,6 +169,7 @@ CREATE TABLE Entities(
 - **Original Timestamps**: Capture dates and times
 
 ### ❌ ibi Ecosystem-Specific (Not Portable)
+
 - **User Authentication**: auth0 IDs, client credentials
 - **Sharing System**: SharedFiles table with cloud sharing IDs
 - **Permission System**: FilePerms, FileGroupPerms tables
@@ -170,6 +179,7 @@ CREATE TABLE Entities(
 ## Common Queries
 
 ### Get All Files with Basic Info
+
 ```sql
 SELECT f.id, f.name, f.contentID, f.mimeType, f.size,
        f.imageDate, f.videoDate, f.cTime
@@ -179,6 +189,7 @@ ORDER BY COALESCE(f.videoDate, f.imageDate, f.cTime);
 ```
 
 ### Get Files with AI Tags
+
 ```sql
 SELECT f.name, ft.tag
 FROM Files f
@@ -188,20 +199,22 @@ ORDER BY f.name, ft.tag;
 ```
 
 ### Get Album Contents
+
 ```sql
 SELECT fg.name AS album_name, f.name AS filename
 FROM FileGroups fg
-JOIN FileGroupFiles fgf ON fg.id = fgf.fileGroupID  
+JOIN FileGroupFiles fgf ON fg.id = fgf.fileGroupID
 JOIN Files f ON fgf.fileID = f.id
 ORDER BY fg.name, fgf.fileCTime;
 ```
 
 ### Get Files with GPS Data
+
 ```sql
 SELECT f.name, f.imageLatitude, f.imageLongitude,
        f.imageCity, f.imageCountry
 FROM Files f
-WHERE f.imageLatitude IS NOT NULL 
+WHERE f.imageLatitude IS NOT NULL
    AND f.imageLongitude IS NOT NULL;
 ```
 
@@ -226,12 +239,14 @@ WHERE f.imageLatitude IS NOT NULL
 This schema documentation is based on analysis of recovered ibi databases with the following identified characteristics:
 
 ### Database Version Identifiers
+
 - **SQLite Schema Version**: 300 (PRAGMA schema_version)
 - **ibi Internal Version**: "166" (from Info.version field)
 - **Total Tables**: 37 tables in main database
 - **Database Type**: SQLite 3.x with row_factory support
 
 ### Feature Set Detected
+
 - **AI Content Tagging**: Computer vision analysis (5,312+ tag instances)
 - **Album Organization**: User-created collections with metadata
 - **GPS Integration**: Coordinate and location name storage
@@ -240,11 +255,13 @@ This schema documentation is based on analysis of recovered ibi databases with t
 - **User Management**: Multi-user/device support (30 entities)
 
 ### Time Period
+
 - **Data Range**: 2017-2023 based on file timestamps
 - **Peak Activity**: Heavy usage 2018-2020 timeframe
 - **Latest Activity**: Files dated up to 2023
 
 ### Hardware/Platform Indicators
+
 - **Storage Backend**: Local file system ("local" storageID)
 - **Timezone Data**: America/Los_Angeles primary, UTC secondary
 - **Language**: en-US primary locale

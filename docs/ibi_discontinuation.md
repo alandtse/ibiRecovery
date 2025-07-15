@@ -2,26 +2,28 @@
 
 ## Official End of Life Announcement
 
-**Date**: August 31, 2024  
+**Date**: August 31, 2024
 **Source**: [Western Digital Support](https://support-en.wd.com/app/answers/detailweb/a_id/51848)
 
 Western Digital officially ended support for all SanDisk ibi devices on August 31, 2024. According to their announcement:
 
-> *"WD is focused on providing exceptional customer experiences with our products. With that focus, from time to time we retire legacy products that are no longer consistent with the company's customer experience ecosystem."*
+> _"WD is focused on providing exceptional customer experiences with our products. With that focus, from time to time we retire legacy products that are no longer consistent with the company's customer experience ecosystem."_
 
 ## What Changed on August 31, 2024
 
 ### ❌ **Services That Stopped Working**
+
 - **Remote Access**: Can no longer access ibi devices from outside your home network
 - **Mobile Apps**: iOS and Android ibi apps no longer function
 - **Web Interface**: Web-based access to ibi devices discontinued
-- **Cloud Features**: 
+- **Cloud Features**:
   - Cloud imports ceased
   - Scheduled backups stopped
   - Remote sharing links disabled
 - **Support**: No more software updates, security patches, or technical support
 
 ### ✅ **What Still Works (Temporarily)**
+
 - **Local Network Access**: If enabled before August 31, 2024
 - **Stored Files**: Existing files remain on the device
 - **Local Wi-Fi Connection**: Device can still connect to your home network
@@ -29,6 +31,7 @@ Western Digital officially ended support for all SanDisk ibi devices on August 3
 ## Critical Warnings from Western Digital
 
 ⚠️ **Permanent Data Loss Risks**:
+
 1. **Factory Reset**: Performing a factory reset will likely result in permanent loss of access to stored content
 2. **Wi-Fi Changes**: Updating home Wi-Fi configuration may break local access permanently
 3. **No Recovery Path**: Once local access is lost, there's no way to re-enable it
@@ -36,12 +39,14 @@ Western Digital officially ended support for all SanDisk ibi devices on August 3
 ## Data Recovery Options
 
 ### Option 1: Professional Recovery Services
+
 - **[Ontrack Data Recovery](https://www.ontrack.com/en-us/blog/end-of-support-for-ibi-devices)** offers ibi recovery services
 - Western Digital customers receive 10% discount
 - Cost: Typically $300-$800+ depending on data size and complexity
 - Contact: 800-872-2599
 
 ### Option 2: This Open Source Toolkit (Free)
+
 - Complete database analysis and file extraction
 - Preserves original album organization and metadata
 - Export compatibility with all major photo software
@@ -50,17 +55,20 @@ Western Digital officially ended support for all SanDisk ibi devices on August 3
 ## Technical Details: What Happens to Your Device
 
 ### Network Connectivity
+
 - Device can still connect to local Wi-Fi networks
 - Local IP address assignment continues to work
 - SSH access may remain available (if previously enabled)
 
 ### Database and Files
+
 - SQLite database (`index.db`) remains intact with all metadata
 - Photo/video files remain stored in `/restsdk/data/files/`
 - AI-generated tags and album information preserved
 - GPS coordinates and EXIF data unchanged
 
 ### Hardware Functionality
+
 - Physical device continues to function normally
 - Hard drive and electronics remain operational
 - Only cloud services and remote software access affected
@@ -85,16 +93,19 @@ Based on their official statement, the discontinuation was part of a strategic s
 ## Impact on Users
 
 ### Immediate (August 31, 2024)
+
 - Loss of remote access and mobile apps
 - Inability to add new content via cloud imports
 - End of automatic backup features
 
 ### Medium-term (Months)
+
 - Potential local access issues if network configuration changes
 - Increasing difficulty accessing stored content
 - No security updates for known vulnerabilities
 
 ### Long-term (Years)
+
 - Hardware may continue working but software becomes increasingly obsolete
 - Risk of permanent data loss due to device failure with no recovery options
 - Local network access may stop working due to router updates or protocol changes
@@ -116,4 +127,4 @@ The ibi discontinuation highlights several important principles:
 
 ---
 
-*This documentation helps preserve the historical context and technical details around the ibi discontinuation for future researchers and developers working on data recovery solutions.*
+_This documentation helps preserve the historical context and technical details around the ibi discontinuation for future researchers and developers working on data recovery solutions._

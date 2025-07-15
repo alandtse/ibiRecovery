@@ -37,7 +37,7 @@
         "ignore_fields": ["custom", "version", "creatorEntityID"]
       },
       "albums": {
-        "table": "FileGroups", 
+        "table": "FileGroups",
         "primary_key": "id",
         "required_fields": ["id", "name"],
         "metadata_fields": ["description", "estCount", "estMinTime", "estMaxTime"],
@@ -61,7 +61,7 @@
     },
     "ignore_tables": [
       "SharedFiles",
-      "FilePerms", 
+      "FilePerms",
       "FileGroupPerms",
       "Entities",
       "CloudFilesystems",
@@ -100,7 +100,7 @@
         "gps_format": "lat,lon"
       },
       "digikam_csv": {
-        "description": "digiKam metadata import format", 
+        "description": "digiKam metadata import format",
         "columns": ["Name", "Tags", "Rating", "Comment", "Album", "Date", "Latitude", "Longitude", "Camera", "Location"],
         "tags_separator": "|",
         "hierarchical_tags": true,
@@ -126,7 +126,7 @@
         },
         "fields": {
           "keywords": "dc:subject",
-          "description": "dc:description", 
+          "description": "dc:description",
           "albums": "lr:hierarchicalSubject"
         }
       }
@@ -135,7 +135,7 @@
       "typical_statistics": {
         "total_files": "8000-9000",
         "images": "~78% of files",
-        "videos": "~21% of files", 
+        "videos": "~21% of files",
         "ai_tags": "5000+ instances",
         "albums": "40-60 collections",
         "gps_tagged": "varies by user"

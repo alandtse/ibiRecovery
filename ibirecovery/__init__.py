@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
 """
 ibiRecovery - Complete toolkit for recovering photos, videos, and metadata from ibi device databases.

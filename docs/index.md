@@ -5,12 +5,14 @@ Welcome to the complete documentation for ibi database recovery tools and schema
 ## Documentation Overview
 
 ### 📖 Schema & API Documentation
+
 - **[ibi Discontinuation Details](ibi_discontinuation.md)** - Official end-of-life timeline and impact
 - **[Complete Schema Documentation](schema_documentation.md)** - Full database structure with all 37 tables
 - **[API Specification](api_specification.json)** - Machine-readable format for tool development
 - **[Metadata Strategy](metadata_strategy.md)** - What to preserve vs. what to filter out
 
-### 🛠️ Analysis Documents  
+### 🛠️ Analysis Documents
+
 - **[Developer Guide](developer_guide.md)** - How to build custom recovery tools
 - **[Metadata Summary](metadata_summary.md)** - Overview of available metadata types
 - **[Metadata Embedding Guide](metadata_embedding_guide.md)** - Technical implementation workflows
@@ -19,18 +21,21 @@ Welcome to the complete documentation for ibi database recovery tools and schema
 ## Quick Reference
 
 ### Database Version Information
+
 - **Schema Version**: 166 (ibi internal version)
 - **SQLite Version**: 3.x (PRAGMA schema_version: 300)
 - **Total Tables**: 37 in main database
 - **Time Period**: 2017-2023 data compatibility
 
 ### Core Statistics
+
 - **Files**: 8,500+ typical dataset
-- **AI Tags**: 5,312+ content recognition instances  
+- **AI Tags**: 5,312+ content recognition instances
 - **Albums**: 40-60 user-created collections
 - **Recovery Rate**: 99-100% verified
 
 ### File Storage Formula
+
 ```
 Physical file path = /files/{contentID[0]}/{contentID}
 Example: contentID "jT9JduP8vIHpwuY32gLQ" → /files/j/jT9JduP8vIHpwuY32gLQ
@@ -39,17 +44,20 @@ Example: contentID "jT9JduP8vIHpwuY32gLQ" → /files/j/jT9JduP8vIHpwuY32gLQ
 ## Key Tables Schema
 
 ### Files Table (Primary Content)
+
 - **Primary Key**: `id` (TEXT)
 - **Storage Key**: `contentID` (maps to physical files)
 - **Metadata**: Complete EXIF, GPS, video, audio metadata
 - **AI Integration**: Links to FilesTags for content analysis
 
 ### FileGroups Table (Albums)
-- **Primary Key**: `id` (TEXT) 
+
+- **Primary Key**: `id` (TEXT)
 - **User Data**: `name` (album names like "Jon's graduation")
 - **Statistics**: `estCount`, `estMinTime`, `estMaxTime`
 
 ### FilesTags Table (AI Content Analysis)
+
 - **Foreign Key**: `fileID` → Files.id
 - **Content**: `tag` (e.g., "person", "child", "beach")
 - **Type**: `auto` (1 = AI-generated, 0 = manual)

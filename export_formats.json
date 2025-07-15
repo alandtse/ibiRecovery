@@ -28,7 +28,7 @@
           "default": ""
         },
         {
-          "name": "Keywords", 
+          "name": "Keywords",
           "source": "tags",
           "filter": "auto_only",
           "separator": ",",
@@ -37,7 +37,7 @@
       ]
     },
     "exiftool_csv": {
-      "name": "ExifTool CSV", 
+      "name": "ExifTool CSV",
       "description": "Industry standard ExifTool format for batch metadata writing",
       "file_extension": "csv",
       "type": "csv",
@@ -50,7 +50,7 @@
         {
           "name": "Keywords",
           "source": "tags",
-          "filter": "auto_only", 
+          "filter": "auto_only",
           "separator": ";",
           "transform": "join_tags"
         },
@@ -317,7 +317,7 @@
           "transform": "first_album_name"
         },
         {
-          "name": "Description", 
+          "name": "Description",
           "source": "file_record.description",
           "default": ""
         },
@@ -355,7 +355,7 @@
     "video_exiftool_csv": {
       "name": "Video ExifTool CSV",
       "description": "ExifTool format optimized for video files (MOV/MP4)",
-      "file_extension": "csv", 
+      "file_extension": "csv",
       "type": "csv",
       "columns": [
         {
@@ -395,7 +395,7 @@
           "source": ["file_record.videoLatitude", "file_record.imageLatitude"]
         },
         {
-          "name": "GPSLongitude", 
+          "name": "GPSLongitude",
           "source": ["file_record.videoLongitude", "file_record.imageLongitude"]
         },
         {
@@ -404,7 +404,7 @@
           "default": ""
         },
         {
-          "name": "Model", 
+          "name": "Model",
           "source": "file_record.videoCameraModel",
           "default": ""
         }
@@ -453,7 +453,7 @@
               "transform": "tag_array"
             },
             "albums": {
-              "source": "albums", 
+              "source": "albums",
               "transform": "album_array"
             },
             "gps": {
@@ -466,7 +466,7 @@
             },
             "dates": {
               "image": "file_record.imageDate",
-              "video": "file_record.videoDate", 
+              "video": "file_record.videoDate",
               "created": "file_record.cTime"
             }
           }
