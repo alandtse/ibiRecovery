@@ -682,6 +682,33 @@ def connect_db(db_path: Path) -> sqlite3.Connection:
         sys.exit(1)
 
 
+def connect_db_readonly(db_path: Path):
+    """Connect to the SQLite database in read-only mode - fallback implementation."""
+    import tempfile
+
+    try:
+        # First try direct URI syntax for read-only access
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        conn.row_factory = sqlite3.Row
+        # Test if we can actually query the database with a real table
+        conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' LIMIT 1"
+        ).fetchone()
+        return conn
+    except sqlite3.Error:
+        # Fallback: copy database to temporary location for read access
+        # This handles mounted filesystems where URI syntax fails
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
+                shutil.copy2(db_path, tmp_file.name)
+                conn = sqlite3.connect(tmp_file.name)
+                conn.row_factory = sqlite3.Row
+                return conn
+        except Exception as e:
+            print(f"Error connecting to database in read-only mode: {e}")
+            raise
+
+
 def find_source_file(files_dir: Path, content_id: str) -> Optional[Path]:
     """Find the actual file using contentID."""
     if not content_id:
@@ -2980,9 +3007,18 @@ Advanced options:
         # Open connection for verification/metadata operations
         conn = connect_db(db_path)
     else:
-        # Fallback to single database
-        conn = connect_db(db_path)
-        files_with_albums, stats = get_all_files_with_albums(conn)
+        # Fallback to single database using read-only connection for mounted filesystems
+        try:
+            conn = connect_db(db_path)
+            files_with_albums, stats = get_all_files_with_albums(conn)
+        except sqlite3.OperationalError as e:
+            if "readonly database" in str(e).lower():
+                print("⚠️  Database is read-only, switching to read-only mode")
+                conn.close() if "conn" in locals() else None
+                conn = connect_db_readonly(db_path)
+                files_with_albums, stats = get_all_files_with_albums(conn)
+            else:
+                raise
         stats["backup_recovered"] = 0
 
     print(
@@ -3024,9 +3060,14 @@ Advanced options:
         print("FILE AVAILABILITY VERIFICATION")
         print("=" * 60)
 
-        verification = core_verify_file_availability(
-            files_with_albums, files_dir, args.verify_sample, args.audit_report
-        )
+        if CORE_MODULES_AVAILABLE:
+            verification = core_verify_file_availability(
+                files_with_albums, files_dir, args.verify_sample, args.audit_report
+            )
+        else:
+            verification = verify_file_availability(
+                files_with_albums, files_dir, args.verify_sample, args.audit_report
+            )
 
         # Display results based on verification type
         if verification.get("comprehensive"):
