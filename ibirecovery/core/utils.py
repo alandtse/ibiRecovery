@@ -76,7 +76,10 @@ def find_source_file(
                     # Enhanced recursive search for userStorage files
                     if user_dir.exists():
                         # Search recursively using rglob to handle complex album structures
-                        matching_files = list(user_dir.rglob(file_name))
+                        # Filter to only return actual files, not directories
+                        matching_files = [
+                            p for p in user_dir.rglob(file_name) if p.is_file()
+                        ]
                         if matching_files:
                             conn.close()
                             return matching_files[0]  # Return first match
@@ -90,7 +93,10 @@ def find_source_file(
 
                     # Search recursively in this structure too
                     if user_dir.exists():
-                        matching_files = list(user_dir.rglob(file_name))
+                        # Filter to only return actual files, not directories
+                        matching_files = [
+                            p for p in user_dir.rglob(file_name) if p.is_file()
+                        ]
                         if matching_files:
                             conn.close()
                             return matching_files[0]  # Return first match

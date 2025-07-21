@@ -709,6 +709,31 @@ def connect_db_readonly(db_path: Path):
             raise
 
 
+def safe_mkdir(path: Path, parents: bool = False, exist_ok: bool = True):
+    """Safely create directory handling resume scenarios and race conditions.
+
+    This function prevents FileExistsError when directories already exist from
+    previous script runs (resume mode) or when multiple processes create the
+    same directory simultaneously.
+    """
+    try:
+        path.mkdir(parents=parents, exist_ok=exist_ok)
+    except FileExistsError:
+        # Handle race condition where directory was created between exist check and mkdir
+        if path.is_dir():
+            # Directory exists and is indeed a directory - this is fine
+            pass
+        else:
+            # Path exists but is not a directory - this is an actual error
+            raise
+    except PermissionError as e:
+        print(f"Warning: Permission denied creating directory {path}: {e}")
+        # Don't re-raise - let the calling code handle missing directory
+    except OSError as e:
+        print(f"Warning: Error creating directory {path}: {e}")
+        # Don't re-raise - let the calling code handle missing directory
+
+
 def find_source_file(
     files_dir: Path,
     content_id: str,
@@ -2024,8 +2049,8 @@ def extract_by_albums(
                             )
                             counter += 1
 
-                        # Create directory structure
-                        dest_path.parent.mkdir(parents=True, exist_ok=True)
+                        # Create directory structure with race condition protection
+                        safe_mkdir(dest_path.parent, parents=True)
 
                         # Use deduplication if enabled
                         if dedup:
@@ -2155,8 +2180,8 @@ def extract_by_albums(
                             use_time_organization=not flat_albums,
                         )
 
-                        # Create directory structure
-                        dest_path.parent.mkdir(parents=True, exist_ok=True)
+                        # Create directory structure with race condition protection
+                        safe_mkdir(dest_path.parent, parents=True)
 
                         # Handle duplicate filenames
                         counter = 1
@@ -2457,7 +2482,7 @@ def extract_by_type(
 
     if copy_files:
         for dir_path in type_dirs.values():
-            dir_path.mkdir(parents=True, exist_ok=True)
+            safe_mkdir(dir_path, parents=True)
 
     total_extracted = 0
     total_size_extracted = 0
