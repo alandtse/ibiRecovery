@@ -710,7 +710,7 @@ def get_all_files_with_albums(
     # First get all files with size information
     files_query = """
     SELECT f.id, f.name, f.contentID, f.mimeType, f.size,
-           f.imageDate, f.videoDate, f.cTime
+           f.imageDate, f.videoDate, f.cTime, f.storageID
     FROM Files f
     WHERE f.contentID IS NOT NULL AND f.contentID != ''
     ORDER BY COALESCE(f.videoDate, f.imageDate, f.cTime)
@@ -3024,7 +3024,7 @@ Advanced options:
         print("FILE AVAILABILITY VERIFICATION")
         print("=" * 60)
 
-        verification = verify_file_availability(
+        verification = core_verify_file_availability(
             files_with_albums, files_dir, args.verify_sample, args.audit_report
         )
 

@@ -152,9 +152,18 @@ def get_merged_files_with_albums(
     Returns:
         Tuple of (files_with_albums, stats)
     """
-    # Get files from main database
-    main_conn = connect_db(main_db_path)
-    files_with_albums, stats = get_all_files_with_albums(main_conn)
+    # Get files from main database using read-only mode for mounted filesystems
+    try:
+        main_conn = connect_db(main_db_path)
+        files_with_albums, stats = get_all_files_with_albums(main_conn)
+    except sqlite3.OperationalError as e:
+        if "readonly database" in str(e).lower():
+            print("⚠️  Main database is read-only, switching to read-only mode")
+            main_conn.close()
+            main_conn = connect_db_readonly(main_db_path)
+            files_with_albums, stats = get_all_files_with_albums(main_conn)
+        else:
+            raise
 
     print(f"📊 Main database: {stats['total_files']} files")
 
@@ -236,7 +245,7 @@ def get_all_files_with_albums(
     # First get all files with size information
     files_query = """
     SELECT f.id, f.name, f.contentID, f.mimeType, f.size,
-           f.imageDate, f.videoDate, f.cTime
+           f.imageDate, f.videoDate, f.cTime, f.storageID
     FROM Files f
     WHERE f.contentID IS NOT NULL AND f.contentID != ''
     ORDER BY COALESCE(f.videoDate, f.imageDate, f.cTime)

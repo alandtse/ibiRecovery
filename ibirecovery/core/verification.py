@@ -273,14 +273,46 @@ def verify_file_availability(
 
         print(f"🔍 Verifying file availability (sample: {actual_sample_size} files)...")
 
+        # Preferentially sample files with storageID for userStorage compatibility
+        files_with_storage = [
+            item for item in files_with_albums if item["file"].get("storageID")
+        ]
+        files_without_storage = [
+            item for item in files_with_albums if not item["file"].get("storageID")
+        ]
+
+        # Create balanced sample: prefer files with storageID, but include some without
+        if files_with_storage and len(files_with_storage) >= actual_sample_size // 2:
+            # Use mostly files with storageID
+            storage_sample_size = min(
+                actual_sample_size * 3 // 4, len(files_with_storage)
+            )
+            traditional_sample_size = actual_sample_size - storage_sample_size
+            sample_files = (
+                files_with_storage[:storage_sample_size]
+                + files_without_storage[:traditional_sample_size]
+            )
+        else:
+            # Fall back to original sampling if insufficient userStorage files
+            sample_files = files_with_albums[:actual_sample_size]
+
         files_found = 0
-        sample_files = files_with_albums[:actual_sample_size]
 
         for item in sample_files:
             file_record = item["file"]
             content_id = file_record["contentID"]
 
-            source_path = find_source_file(files_dir, content_id)
+            # Enhanced file finding with userStorage support
+            file_name = file_record.get("name")
+            storage_id = file_record.get("storageID")
+            # Calculate database path correctly based on files_dir structure
+            # files_dir is typically: .../restsdk/data/files
+            # database is at: .../restsdk/data/db/index.db
+            db_file_path = files_dir.parent / "db" / "index.db"
+
+            source_path = find_source_file(
+                files_dir, content_id, file_name, storage_id, db_file_path
+            )
             if source_path and source_path.exists():
                 files_found += 1
 
