@@ -63,7 +63,6 @@ def find_source_file(
                 # Convert from original path to current mount structure
                 if "/data/wd/diskVolume0/" in fs_path:
                     relative_path = fs_path.replace("/data/wd/diskVolume0/", "")
-                    # Construct path: ibi_root/userStorage/user_id/filename
                     # Go up from /restsdk/data/files to ibi root (3 levels)
                     ibi_root = files_dir.parent.parent.parent
                     user_dir = ibi_root / relative_path
@@ -74,18 +73,38 @@ def find_source_file(
                         conn.close()
                         return user_file_path
 
-                    # Search recursively in subdirectories for userStorage files
+                    # Enhanced recursive search for userStorage files
                     if user_dir.exists():
-                        for subdir in user_dir.iterdir():
-                            if subdir.is_dir():
-                                subdir_file_path = subdir / file_name
-                                if subdir_file_path.exists():
-                                    conn.close()
-                                    return subdir_file_path
+                        # Search recursively using rglob to handle complex album structures
+                        matching_files = list(user_dir.rglob(file_name))
+                        if matching_files:
+                            conn.close()
+                            return matching_files[0]  # Return first match
+
+                # Handle alternative path structures
+                elif "/userStorage/" in fs_path:
+                    # Direct userStorage reference
+                    user_path_part = fs_path.split("/userStorage/")[-1]
+                    ibi_root = files_dir.parent.parent.parent
+                    user_dir = ibi_root / "userStorage" / user_path_part
+
+                    # Search recursively in this structure too
+                    if user_dir.exists():
+                        matching_files = list(user_dir.rglob(file_name))
+                        if matching_files:
+                            conn.close()
+                            return matching_files[0]  # Return first match
 
             conn.close()
-        except Exception:
+        except Exception as e:
             # Fallback to traditional method if userStorage lookup fails
+            # Add debugging for production troubleshooting
+            import os
+
+            if os.environ.get("IBI_DEBUG"):
+                print(
+                    f"UserStorage lookup failed for {file_name} (storage: {storage_id}): {e}"
+                )
             pass
 
     # Strategy 2: Traditional ibi structure (contentID-based paths)

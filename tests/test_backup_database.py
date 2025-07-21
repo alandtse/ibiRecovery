@@ -99,7 +99,7 @@ class TestBackupDatabaseMerging:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        # Create simplified Files table
+        # Create simplified Files table with storageID for modern ibi support
         cursor.execute(
             """
             CREATE TABLE Files(
@@ -110,7 +110,8 @@ class TestBackupDatabaseMerging:
                 size INTEGER NOT NULL DEFAULT 0,
                 imageDate INTEGER,
                 videoDate INTEGER,
-                cTime INTEGER NOT NULL
+                cTime INTEGER NOT NULL,
+                storageID TEXT
             )
         """
         )
@@ -141,8 +142,8 @@ class TestBackupDatabaseMerging:
         for file_data in files_data:
             cursor.execute(
                 """
-                INSERT INTO Files (id, name, contentID, mimeType, size, imageDate, videoDate, cTime)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO Files (id, name, contentID, mimeType, size, imageDate, videoDate, cTime, storageID)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     file_data["id"],
@@ -153,6 +154,7 @@ class TestBackupDatabaseMerging:
                     file_data.get("imageDate"),
                     file_data.get("videoDate"),
                     file_data["cTime"],
+                    file_data.get("storageID", "local"),
                 ),
             )
 
@@ -172,6 +174,7 @@ class TestBackupDatabaseMerging:
                 "size": 1000000,
                 "imageDate": 1640995200000,
                 "cTime": 1640995200000,
+                "storageID": "local",
             }
         ]
         self.create_test_database(main_db, main_files)
@@ -187,6 +190,7 @@ class TestBackupDatabaseMerging:
                 "size": 1000000,
                 "imageDate": 1640995200000,
                 "cTime": 1640995200000,
+                "storageID": "local",
             },
             {
                 "id": "file2",
@@ -196,6 +200,7 @@ class TestBackupDatabaseMerging:
                 "size": 2000000,
                 "imageDate": 1640995300000,
                 "cTime": 1640995300000,
+                "storageID": "local",
             },
         ]
         self.create_test_database(backup_db, backup_files)
@@ -232,6 +237,7 @@ class TestBackupDatabaseMerging:
                 "size": 1000000,
                 "imageDate": 1640995200000,
                 "cTime": 1640995200000,
+                "storageID": "local",
             }
         ]
 
@@ -265,6 +271,7 @@ class TestBackupDatabaseMerging:
                 "size": 1000000,
                 "imageDate": 1640995200000,
                 "cTime": 1640995200000,
+                "storageID": "local",
             }
         ]
         self.create_test_database(main_db, main_files)
@@ -289,6 +296,7 @@ class TestBackupDatabaseMerging:
                 "size": 1000000,
                 "imageDate": 1640995200000,
                 "cTime": 1640995200000,
+                "storageID": "local",
             }
         ]
         self.create_test_database(main_db, main_files)
@@ -318,6 +326,7 @@ class TestBackupDatabaseMerging:
                 "size": 1000000,
                 "imageDate": 1640995200000,
                 "cTime": 1640995200000,
+                "storageID": "local",
             }
         ]
         self.create_test_database(main_db, main_files)
@@ -333,6 +342,7 @@ class TestBackupDatabaseMerging:
                 "size": 5000000,
                 "videoDate": 1640995300000,
                 "cTime": 1640995300000,
+                "storageID": "local",
             },
             {
                 "id": "file3",
@@ -341,6 +351,7 @@ class TestBackupDatabaseMerging:
                 "mimeType": "application/pdf",
                 "size": 500000,
                 "cTime": 1640995400000,
+                "storageID": "local",
             },
         ]
         self.create_test_database(backup_db, backup_files)
@@ -588,6 +599,7 @@ class TestBackupDatabaseErrorHandling:
                 "size": 1000000,
                 "imageDate": 1640995200000,
                 "cTime": 1640995200000,
+                "storageID": "local",
             }
         ]
 
@@ -603,7 +615,8 @@ class TestBackupDatabaseErrorHandling:
                 size INTEGER NOT NULL DEFAULT 0,
                 imageDate INTEGER,
                 videoDate INTEGER,
-                cTime INTEGER NOT NULL
+                cTime INTEGER NOT NULL,
+                storageID TEXT
             )
         """
         )
@@ -629,8 +642,8 @@ class TestBackupDatabaseErrorHandling:
         for file_data in main_files:
             cursor.execute(
                 """
-                INSERT INTO Files (id, name, contentID, mimeType, size, imageDate, videoDate, cTime)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO Files (id, name, contentID, mimeType, size, imageDate, videoDate, cTime, storageID)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     file_data["id"],
@@ -641,6 +654,7 @@ class TestBackupDatabaseErrorHandling:
                     file_data.get("imageDate"),
                     file_data.get("videoDate"),
                     file_data["cTime"],
+                    file_data.get("storageID", "local"),
                 ),
             )
 
@@ -694,6 +708,7 @@ class TestBackupDatabaseErrorHandling:
                 "size": 1000000,
                 "imageDate": 1640995200000,
                 "cTime": 1640995200000,
+                "storageID": "local",
             }
         ]
 
@@ -709,7 +724,8 @@ class TestBackupDatabaseErrorHandling:
                 size INTEGER NOT NULL DEFAULT 0,
                 imageDate INTEGER,
                 videoDate INTEGER,
-                cTime INTEGER NOT NULL
+                cTime INTEGER NOT NULL,
+                storageID TEXT
             )
         """
         )
@@ -735,8 +751,8 @@ class TestBackupDatabaseErrorHandling:
         for file_data in main_files:
             cursor.execute(
                 """
-                INSERT INTO Files (id, name, contentID, mimeType, size, imageDate, videoDate, cTime)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO Files (id, name, contentID, mimeType, size, imageDate, videoDate, cTime, storageID)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     file_data["id"],
@@ -747,6 +763,7 @@ class TestBackupDatabaseErrorHandling:
                     file_data.get("imageDate"),
                     file_data.get("videoDate"),
                     file_data["cTime"],
+                    file_data.get("storageID", "local"),
                 ),
             )
 
@@ -804,7 +821,8 @@ class TestBackupDatabaseReadOnly:
                 size INTEGER,
                 cTime INTEGER,
                 imageDate INTEGER,
-                videoDate INTEGER
+                videoDate INTEGER,
+                storageID TEXT
             )
         """
         )
@@ -833,8 +851,8 @@ class TestBackupDatabaseReadOnly:
         )
         conn.execute(
             """
-            INSERT INTO Files (id, name, contentID, mimeType, size, cTime, imageDate)
-            VALUES ('file1', 'main.jpg', 'content1', 'image/jpeg', 1000, 1640995200000, 1640995200000)
+            INSERT INTO Files (id, name, contentID, mimeType, size, cTime, imageDate, storageID)
+            VALUES ('file1', 'main.jpg', 'content1', 'image/jpeg', 1000, 1640995200000, 1640995200000, 'local')
         """
         )
         conn.commit()
@@ -853,7 +871,8 @@ class TestBackupDatabaseReadOnly:
                 size INTEGER,
                 cTime INTEGER,
                 imageDate INTEGER,
-                videoDate INTEGER
+                videoDate INTEGER,
+                storageID TEXT
             )
         """
         )
@@ -882,8 +901,8 @@ class TestBackupDatabaseReadOnly:
         )
         conn.execute(
             """
-            INSERT INTO Files (id, name, contentID, mimeType, size, cTime, imageDate)
-            VALUES ('file2', 'backup.jpg', 'content2', 'image/jpeg', 2000, 1640995300000, 1640995300000)
+            INSERT INTO Files (id, name, contentID, mimeType, size, cTime, imageDate, storageID)
+            VALUES ('file2', 'backup.jpg', 'content2', 'image/jpeg', 2000, 1640995300000, 1640995300000, 'local')
         """
         )
         conn.commit()

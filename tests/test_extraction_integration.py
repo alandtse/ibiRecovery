@@ -75,11 +75,15 @@ class TestExtractionIntegration:
         stats = {"total_files": 3, "total_size": 6656000}
 
         # Test extraction
+        db_path = mock_ibi_structure["root"] / "test.db"  # Dummy db_path for test
+        db_path = mock_ibi_structure["root"] / "test.db"  # Dummy db_path for test
         total_extracted, total_size = extract_by_albums(
             files_with_albums,
             files_dir,
             output_dir,
             stats,
+            db_path,
+            db_path,
             copy_files=True,
             use_rsync=False,
             resume=True,
@@ -153,11 +157,15 @@ class TestExtractionIntegration:
         stats = {"total_files": 2, "total_size": 2048000}
 
         # Test extraction with deduplication
+        db_path = mock_ibi_structure["root"] / "test.db"  # Dummy db_path for test
+        db_path = mock_ibi_structure["root"] / "test.db"  # Dummy db_path for test
         total_extracted, total_size = extract_by_albums(
             files_with_albums,
             files_dir,
             output_dir,
             stats,
+            db_path,
+            db_path,
             copy_files=True,
             use_rsync=False,
             resume=True,
@@ -262,11 +270,13 @@ class TestExtractionIntegration:
         stats = {"total_files": 1, "total_size": 1024000}
 
         # First extraction
+        db_path = mock_ibi_structure["root"] / "test.db"  # Dummy db_path for test
         total_extracted_1, _ = extract_by_albums(
             files_with_albums,
             files_dir,
             output_dir,
             stats,
+            db_path,
             copy_files=True,
             use_rsync=False,
             resume=True,
@@ -288,6 +298,7 @@ class TestExtractionIntegration:
             files_dir,
             output_dir,
             stats,
+            db_path,
             copy_files=True,
             use_rsync=False,
             resume=True,
@@ -324,11 +335,13 @@ class TestExtractionIntegration:
         stats = {"total_files": 1, "total_size": 1024000}
 
         # Should handle missing files gracefully
+        db_path = mock_ibi_structure["root"] / "test.db"  # Dummy db_path for test
         total_extracted, total_size = extract_by_albums(
             files_with_albums,
             files_dir,
             output_dir,
             stats,
+            db_path,
             copy_files=True,
             use_rsync=False,
             resume=True,
@@ -530,11 +543,13 @@ class TestErrorHandling:
         stats = {"total_files": 1, "total_size": 1024000}
 
         # Should handle invalid paths gracefully
+        db_path = mock_ibi_structure["root"] / "test.db"  # Dummy db_path for test
         total_extracted, total_size = extract_by_albums(
             files_with_albums,
             files_dir,
             output_dir,
             stats,
+            db_path,
             copy_files=True,
             use_rsync=False,
             resume=True,
@@ -634,11 +649,13 @@ class TestErrorHandling:
         stats = {"total_files": 2, "total_size": 2048000}
 
         # Should handle problematic names gracefully
+        db_path = mock_ibi_structure["root"] / "test.db"  # Dummy db_path for test
         total_extracted, total_size = extract_by_albums(
             files_with_albums,
             files_dir,
             output_dir,
             stats,
+            db_path,
             copy_files=True,
             use_rsync=False,
             resume=True,

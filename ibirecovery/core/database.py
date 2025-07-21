@@ -130,11 +130,18 @@ def connect_db_readonly(db_path: Path) -> ReadOnlyConnection:
         # Fallback: copy database to temporary location for read access
         # This handles mounted filesystems where URI syntax fails
         try:
+            # Check if file exists before trying to copy
+            if not db_path.exists():
+                raise sqlite3.Error(f"Database file does not exist: {db_path}")
+
             with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
                 shutil.copy2(db_path, tmp_file.name)
                 conn = sqlite3.connect(tmp_file.name)
                 conn.row_factory = sqlite3.Row
                 return ReadOnlyConnection(conn, tmp_file.name)
+        except (OSError, IOError, shutil.Error) as e:
+            print(f"Error connecting to database in read-only mode: {e}")
+            raise sqlite3.Error(f"Cannot access database: {e}") from e
         except Exception as e:
             print(f"Error connecting to database in read-only mode: {e}")
             raise
@@ -242,14 +249,32 @@ def get_all_files_with_albums(
     conn: sqlite3.Connection,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
     """Get all files with their album memberships and calculate statistics."""
-    # First get all files with size information
-    files_query = """
-    SELECT f.id, f.name, f.contentID, f.mimeType, f.size,
-           f.imageDate, f.videoDate, f.cTime, f.storageID
-    FROM Files f
-    WHERE f.contentID IS NOT NULL AND f.contentID != ''
-    ORDER BY COALESCE(f.videoDate, f.imageDate, f.cTime)
-    """
+    # Check if database has storageID column (modern schema)
+    has_storage_id = False
+    try:
+        conn.execute("SELECT storageID FROM Files LIMIT 1")
+        has_storage_id = True
+    except sqlite3.OperationalError:
+        has_storage_id = False
+
+    # Build query based on schema
+    if has_storage_id:
+        files_query = """
+        SELECT f.id, f.name, f.contentID, f.mimeType, f.size,
+               f.imageDate, f.videoDate, f.cTime, f.storageID
+        FROM Files f
+        WHERE f.contentID IS NOT NULL AND f.contentID != ''
+        ORDER BY COALESCE(f.videoDate, f.imageDate, f.cTime)
+        """
+    else:
+        # Legacy schema without storageID
+        files_query = """
+        SELECT f.id, f.name, f.contentID, f.mimeType, f.size,
+               f.imageDate, f.videoDate, f.cTime, 'local' as storageID
+        FROM Files f
+        WHERE f.contentID IS NOT NULL AND f.contentID != ''
+        ORDER BY COALESCE(f.videoDate, f.imageDate, f.cTime)
+        """
 
     files = conn.execute(files_query).fetchall()
 

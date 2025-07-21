@@ -167,11 +167,13 @@ class TestAlbumNameSanitization:
         stats = {"total_files": 1, "total_size": 1024}
 
         # Extract files
+        db_path = files_dir.parent / "test.db"  # Dummy db_path for test
         total_extracted, total_size = extract_by_albums(
             files_with_albums,
             files_dir,
             output_dir,
             stats,
+            db_path,
             copy_files=True,
             use_rsync=False,
             resume=False,
@@ -219,11 +221,13 @@ class TestAlbumNameSanitization:
         stats = {"total_files": 1, "total_size": 1024}
 
         # Extract files
+        db_path = files_dir.parent / "test.db"  # Dummy db_path for test
         extract_by_albums(
             files_with_albums,
             files_dir,
             output_dir,
             stats,
+            db_path,
             copy_files=True,
             use_rsync=False,
             resume=False,
@@ -265,11 +269,13 @@ class TestAlbumNameSanitization:
         stats = {"total_files": 1, "total_size": 1024}
 
         # Extract files
+        db_path = files_dir.parent / "test.db"  # Dummy db_path for test
         extract_by_albums(
             files_with_albums,
             files_dir,
             output_dir,
             stats,
+            db_path,
             copy_files=True,
             use_rsync=False,
             resume=False,
@@ -305,11 +311,13 @@ class TestAlbumNameSanitization:
         stats = {"total_files": 1, "total_size": 1024}
 
         # Extract files
+        db_path = files_dir.parent / "test.db"  # Dummy db_path for test
         extract_by_albums(
             files_with_albums,
             files_dir,
             output_dir,
             stats,
+            db_path,
             copy_files=True,
             use_rsync=False,
             resume=False,
@@ -378,11 +386,13 @@ class TestAlbumNameSanitization:
         stats = {"total_files": 3, "total_size": 3072}
 
         # Extract files
+        db_path = files_dir.parent / "test.db"  # Dummy db_path for test
         extract_by_albums(
             files_with_albums,
             files_dir,
             output_dir,
             stats,
+            db_path,
             copy_files=True,
             use_rsync=False,
             resume=False,
@@ -425,11 +435,13 @@ class TestAlbumNameSanitization:
         stats = {"total_files": 1, "total_size": 1024}
 
         # Extract files
+        db_path = files_dir.parent / "test.db"  # Dummy db_path for test
         extract_by_albums(
             files_with_albums,
             files_dir,
             output_dir,
             stats,
+            db_path,
             copy_files=True,
             use_rsync=False,
             resume=False,
@@ -465,11 +477,13 @@ class TestAlbumNameSanitization:
         stats = {"total_files": 1, "total_size": 1024}
 
         # Extract files
+        db_path = files_dir.parent / "test.db"  # Dummy db_path for test
         extract_by_albums(
             files_with_albums,
             files_dir,
             output_dir,
             stats,
+            db_path,
             copy_files=True,
             use_rsync=False,
             resume=False,

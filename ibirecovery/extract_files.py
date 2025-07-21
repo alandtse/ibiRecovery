@@ -709,8 +709,21 @@ def connect_db_readonly(db_path: Path):
             raise
 
 
-def find_source_file(files_dir: Path, content_id: str) -> Optional[Path]:
-    """Find the actual file using contentID."""
+def find_source_file(
+    files_dir: Path,
+    content_id: str,
+    file_name: str = None,
+    storage_id: str = None,
+    db_path: Path = None,
+) -> Optional[Path]:
+    """Find the actual file using contentID with userStorage support."""
+    if CORE_MODULES_AVAILABLE:
+        # Use enhanced version that supports userStorage
+        return core_find_source_file(
+            files_dir, content_id, file_name, storage_id, db_path
+        )
+
+    # Fallback for traditional ibi structure only
     if not content_id:
         return None
 
@@ -1871,6 +1884,7 @@ def extract_by_albums(
     files_dir: Path,
     output_dir: Path,
     stats: Dict[str, Any],
+    db_path: Path,
     copy_files: bool = True,
     use_rsync: bool = True,
     resume: bool = True,
@@ -1983,7 +1997,13 @@ def extract_by_albums(
                 file_size = file_record["size"] or 0
 
                 if copy_files:
-                    source_path = find_source_file(files_dir, file_record["contentID"])
+                    source_path = find_source_file(
+                        files_dir,
+                        file_record["contentID"],
+                        file_record["name"],
+                        file_record.get("storageID"),
+                        db_path,
+                    )
                     if source_path:
                         # Use conditional organization within album folder
                         dest_path = get_organized_path(
@@ -2119,7 +2139,13 @@ def extract_by_albums(
                 file_size = file_record["size"] or 0
 
                 if copy_files:
-                    source_path = find_source_file(files_dir, file_record["contentID"])
+                    source_path = find_source_file(
+                        files_dir,
+                        file_record["contentID"],
+                        file_record["name"],
+                        file_record.get("storageID"),
+                        db_path,
+                    )
                     if source_path:
                         # Use conditional organization within Unorganized folder
                         dest_path = get_organized_path(
@@ -2414,6 +2440,7 @@ def extract_by_type(
     files_dir: Path,
     output_dir: Path,
     stats: Dict[str, Any],
+    db_path: Path,
     copy_files: bool = True,
     use_rsync: bool = True,
     resume: bool = True,
@@ -2504,7 +2531,13 @@ def extract_by_type(
                 type_counts[category] += 1
 
                 if copy_files:
-                    source_path = find_source_file(files_dir, file_record["contentID"])
+                    source_path = find_source_file(
+                        files_dir,
+                        file_record["contentID"],
+                        file_record["name"],
+                        file_record.get("storageID"),
+                        db_path,
+                    )
                     if source_path:
                         dest_path = type_dirs[category] / file_record["name"]
 
@@ -3189,6 +3222,7 @@ Advanced options:
             files_dir,
             output_dir,
             stats,
+            db_path,
             not args.list_only,
             use_rsync,
             args.resume,
@@ -3201,6 +3235,7 @@ Advanced options:
             files_dir,
             output_dir,
             stats,
+            db_path,
             not args.list_only,
             use_rsync,
             args.resume,
