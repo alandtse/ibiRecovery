@@ -3089,33 +3089,37 @@ Advanced options:
         else:
             print(f"Sample results:")
             print(
-                f"  Available: {verification['available_count']}/{verification['sample_size']} "
-                f"({verification['availability_rate']:.1f}%)"
+                f"  Available: {verification['files_found']}/{verification['sample_size']} "
+                f"({verification['recovery_rate']:.1f}%)"
             )
             print(
-                f"  Missing: {verification['missing_count']}/{verification['sample_size']}"
+                f"  Missing: {verification['sample_size'] - verification['files_found']}/{verification['sample_size']}"
             )
-            print(f"  Available data: {format_size(verification['available_size'])}")
-            print(
-                f"  Total sample data: {format_size(verification['total_sample_size'])}"
-            )
+            # Only show data sizes if available (fallback verification has these fields)
+            if "available_size" in verification:
+                print(
+                    f"  Available data: {format_size(verification['available_size'])}"
+                )
+            if "total_sample_size" in verification:
+                print(
+                    f"  Total sample data: {format_size(verification['total_sample_size'])}"
+                )
         print()
 
-        if verification["availability_rate"] >= 95:
+        recovery_rate = verification.get(
+            "recovery_rate", verification.get("availability_rate", 0)
+        )
+        if recovery_rate >= 95:
             print("✅ EXCELLENT: Very high file availability rate")
-        elif verification["availability_rate"] >= 80:
+        elif recovery_rate >= 80:
             print("✅ GOOD: High file availability rate")
-        elif verification["availability_rate"] >= 50:
+        elif recovery_rate >= 50:
             print("⚠️  FAIR: Moderate file availability rate")
         else:
             print("❌ POOR: Low file availability rate")
 
-        estimated_recoverable = int(
-            (verification["availability_rate"] / 100) * stats["total_files"]
-        )
-        estimated_size = int(
-            (verification["availability_rate"] / 100) * stats["total_size"]
-        )
+        estimated_recoverable = int((recovery_rate / 100) * stats["total_files"])
+        estimated_size = int((recovery_rate / 100) * stats["total_size"])
         print(f"Estimated recoverable files: {estimated_recoverable}")
         print(f"Estimated recoverable data: {format_size(estimated_size)}")
         print()
@@ -3123,7 +3127,7 @@ Advanced options:
             "Recommendation: "
             + (
                 "Proceed with extraction"
-                if verification["availability_rate"] >= 50
+                if recovery_rate >= 50
                 else "Check file paths and mount points"
             )
         )

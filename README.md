@@ -9,7 +9,7 @@ Complete toolkit for recovering photos, videos, and metadata from ibi device dat
 
 Based on my own needs:
 
-- ✅ **8,500+ files** with 99-100% recovery rate
+- ✅ **9,400+ files** with 75%+ recovery rate for userStorage architectures
 - ✅ **5,312+ AI content tags** (automatic "person", "child", "beach" categorization)
 - ✅ **50+ family albums** with meaningful names ("Jon's graduation", "Hawaii 2010")
 - ✅ **Complete GPS/location data** from geotagged photos
@@ -50,11 +50,16 @@ The ibi data is stored in this directory structure on the device:
 │   └── index.db          # SQLite database with all metadata
 ├── dbBackup/
 │   └── index.db          # Backup database (optional, additional recovery)
-└── files/
-    ├── 0/                # Files starting with '0'
-    ├── 1/                # Files starting with '1'
-    ├── ...
-    └── f/                # Files starting with 'f'
+├── files/
+│   ├── 0/                # Traditional: Files starting with '0'
+│   ├── 1/                # Traditional: Files starting with '1'
+│   ├── ...
+│   └── f/                # Traditional: Files starting with 'f'
+└── userStorage/          # Newer ibi versions (post-2020)
+    ├── auth0|user1/      # User-specific directories
+    │   ├── Album Name/   # Organized by album/backup folders
+    │   └── filename.jpg
+    └── auth0|user2/
 ```
 
 ### 🛠️ Access Methods
@@ -149,6 +154,7 @@ poetry run ibi-extract /path/to/ibi_root ./output --export      # Extract + expo
 
 ```bash
 # If not using poetry, run the package scripts directly:
+# Note: Use module syntax for enhanced userStorage support
 python -m ibirecovery.extract_files --verify /path/to/ibi_root
 python -m ibirecovery.extract_files --export /path/to/ibi_root
 python -m ibirecovery.extract_files /path/to/ibi_root ./output --export
