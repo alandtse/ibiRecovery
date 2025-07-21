@@ -66,11 +66,22 @@ def find_source_file(
                     # Construct path: ibi_root/userStorage/user_id/filename
                     # Go up from /restsdk/data/files to ibi root (3 levels)
                     ibi_root = files_dir.parent.parent.parent
-                    user_file_path = ibi_root / relative_path / file_name
+                    user_dir = ibi_root / relative_path
 
+                    # Try direct path first
+                    user_file_path = user_dir / file_name
                     if user_file_path.exists():
                         conn.close()
                         return user_file_path
+
+                    # Search recursively in subdirectories for userStorage files
+                    if user_dir.exists():
+                        for subdir in user_dir.iterdir():
+                            if subdir.is_dir():
+                                subdir_file_path = subdir / file_name
+                                if subdir_file_path.exists():
+                                    conn.close()
+                                    return subdir_file_path
 
             conn.close()
         except Exception:
