@@ -13,7 +13,9 @@ This document provides complete schema documentation for ibi device databases re
 
 ## File Storage System
 
-### Physical Storage Structure
+### Physical Storage Structures
+
+#### Traditional Storage (Pre-2020)
 
 ```
 /restsdk/data/files/
@@ -25,10 +27,52 @@ This document provides complete schema documentation for ibi device databases re
 └── z/
 ```
 
-### Storage Formula
+#### UserStorage Structure (Post-2020)
+
+```
+/userStorage/
+├── auth0|user1_id/          # User-specific directories
+│   ├── Album Name/          # Organized by album/backup folders
+│   │   ├── photo1.jpg
+│   │   └── video1.mp4
+│   └── Another Album/
+└── auth0|user2_id/
+    └── Camera Backup/
+        └── IMG_12345.jpg
+```
+
+### Storage Resolution Formula
+
+#### Traditional Files (storageID = "local" or NULL)
 
 - **File Path**: `/files/{contentID[0]}/{contentID}`
 - **Example**: contentID `jT9JduP8vIHpwuY32gLQ` → `/files/j/jT9JduP8vIHpwuY32gLQ`
+
+#### UserStorage Files (storageID from Filesystems table)
+
+- **File Path**: `/userStorage/{userID}/{albumPath}/{filename}`
+- **Resolution**: Query Filesystems table for path mapping, search recursively in subdirectories
+- **Example**: `auth0|5aa6ecdb83fef129ce546335/Google Pixel 2 Camera Backup/IMG_20150613_175329.jpg`
+
+## Security and Encryption
+
+### File Encryption Status
+
+**Files are NOT encrypted** - they are stored in plaintext format:
+
+- **Evidence**: File headers intact (JPEG files start with `FFD8FF`, MP4 files contain `ftyp`)
+- **Hash Fields**: `contentHash` field used for integrity verification, not encryption
+- **Direct Access**: Files can be opened and read normally without decryption
+- **Recovery Impact**: Direct file copying works without additional decryption steps
+
+### Multi-User Support
+
+**Automatic multi-user recovery** supported for unlimited users:
+
+- **User Discovery**: Automatic via `Filesystems` table queries
+- **Path Resolution**: Dual-strategy approach handles both storage types
+- **Scalability**: Works regardless of number of users on device
+- **No Configuration**: Zero manual setup required for multi-user devices
 
 ## Core Tables Schema
 
@@ -47,7 +91,7 @@ CREATE TABLE Files(
     mTime INTEGER,                                   -- Data modification time
     size INTEGER NOT NULL DEFAULT 0,                 -- File size in bytes
     mimeType TEXT NOT NULL DEFAULT '',               -- MIME type
-    storageID TEXT NOT NULL,                         -- Storage backend ('local')
+    storageID TEXT NOT NULL,                         -- Storage backend ('local' or userStorage ID)
     hidden INTEGER NOT NULL DEFAULT 1,               -- Visibility flag
     description TEXT NOT NULL DEFAULT '',            -- User description
     custom TEXT NOT NULL DEFAULT '',                 -- Internal hash/tracking
@@ -98,6 +142,25 @@ CREATE TABLE Files(
     week INTEGER NOT NULL DEFAULT 0
 );
 ```
+
+### Filesystems Table (UserStorage Mappings)
+
+```sql
+CREATE TABLE Filesystems(
+    id TEXT NOT NULL PRIMARY KEY,                   -- Storage identifier (matches Files.storageID)
+    name TEXT NOT NULL,                             -- User identifier (e.g., auth0|user_id)
+    path TEXT NOT NULL,                             -- Original mount path in device
+    -- Example: /data/wd/diskVolume0/userStorage/auth0|5aa6ecdb83fef129ce546335
+    cTime INTEGER NOT NULL,                         -- Creation time (ms)
+    mTime INTEGER                                   -- Modification time (ms)
+);
+```
+
+**Purpose**: Maps storageID values to user directories in userStorage structure
+
+- **User Resolution**: `name` field contains Auth0 user identifier
+- **Path Mapping**: `path` field shows original device mount location
+- **Recovery Usage**: Used to locate files in `/userStorage/{name}/` directory structure
 
 ### FileGroups Table (Albums/Collections)
 
@@ -262,7 +325,7 @@ This schema documentation is based on analysis of recovered ibi databases with t
 
 ### Hardware/Platform Indicators
 
-- **Storage Backend**: Local file system ("local" storageID)
+- **Storage Backend**: Dual-mode (Traditional "local" + UserStorage filesystems)
 - **Timezone Data**: America/Los_Angeles primary, UTC secondary
 - **Language**: en-US primary locale
 - **Device Types**: Mix of user accounts (type=1) and devices (type=2)

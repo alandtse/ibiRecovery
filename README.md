@@ -204,6 +204,7 @@ ibiRecovery/
 - **[Reference Implementation](docs/reference_implementation.py)** - Clean parser API for building tools
 - **[Metadata Strategy](docs/metadata_strategy.md)** - What to preserve vs. what to filter
 - **[API Specification](docs/api_specification.json)** - Machine-readable format spec
+- **[Version Compatibility Guide](docs/version_compatibility.md)** - Legacy vs. modern ibi architecture support
 - **[Disk Analysis Methodology](docs/disk_analysis_methodology.md)** - Technical recovery process
 
 ## 🛠️ Available Tools
@@ -278,10 +279,13 @@ This project provides:
 
 ### Version Compatibility
 
-- **Database Schema Version**: 166
-- **SQLite Version**: 3.x (schema version 300)
-- **Feature Set**: AI tagging, multi-user, GPS integration
-- **Time Period**: 2017-2023 data compatibility verified
+- **Universal Support**: All ibi versions (legacy and modern architectures)
+- **Database Schema**: Version 166+ (automatic detection and fallback)
+- **Storage Types**: Traditional contentID + UserStorage (dual-strategy recovery)
+- **Multi-User**: Unlimited users with automatic discovery
+- **Time Period**: 2017-2023+ data compatibility verified
+
+See [Version Compatibility Guide](docs/version_compatibility.md) for detailed architecture information.
 
 ## 🧪 Testing & Development
 
