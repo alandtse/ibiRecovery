@@ -308,13 +308,18 @@ class TestRaceConditionHandling:
         conflict_path = temp_dir / "conflict_name"
         conflict_path.write_text("I am a file, not a directory")
 
-        # Try to create a directory with the same name - should handle gracefully
+        # Try to create a directory with the same name - should rename file and create directory
         safe_mkdir(conflict_path)
 
-        # File should still exist (not replaced by directory)
+        # Directory should now exist
         assert conflict_path.exists()
-        assert conflict_path.is_file()
-        assert not conflict_path.is_dir()
+        assert conflict_path.is_dir()
+
+        # Original file should be renamed
+        renamed_file = temp_dir / "conflict_name_conflicted_file"
+        assert renamed_file.exists()
+        assert renamed_file.is_file()
+        assert renamed_file.read_text() == "I am a file, not a directory"
 
     def test_safe_mkdir_exact_production_scenario(self, temp_dir):
         """Test the exact scenario from production: safe_mkdir(dest_path.parent, parents=True)."""
@@ -335,3 +340,58 @@ class TestRaceConditionHandling:
         # Should complete without error
         assert august_dir.exists()
         assert august_dir.is_dir()
+
+    def test_safe_mkdir_resolves_file_directory_conflict(self, temp_dir):
+        """Test that safe_mkdir intelligently renames conflicting files to create directories."""
+        from ibirecovery.extract_files import safe_mkdir
+
+        # Create a file where we need a directory (simulates production issue)
+        conflict_path = temp_dir / "2023" / "08"
+        conflict_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Create a file with the directory name we need
+        conflict_content = "This file is blocking directory creation"
+        conflict_path.write_text(conflict_content)
+        assert conflict_path.is_file()
+
+        # Try to create the directory - should rename the file and create directory
+        safe_mkdir(conflict_path, parents=True)
+
+        # Directory should now exist
+        assert conflict_path.exists()
+        assert conflict_path.is_dir()
+
+        # Original file should be renamed and still exist
+        renamed_file = conflict_path.parent / "08_conflicted_file"
+        assert renamed_file.exists()
+        assert renamed_file.is_file()
+        assert renamed_file.read_text() == conflict_content
+
+    def test_safe_mkdir_handles_multiple_conflicts(self, temp_dir):
+        """Test that safe_mkdir handles multiple conflicting files with counter."""
+        from ibirecovery.extract_files import safe_mkdir
+
+        # Create multiple files that would conflict with renaming
+        conflict_dir = temp_dir / "conflicts"
+        conflict_dir.mkdir()
+
+        target_path = conflict_dir / "data"
+
+        # Create original conflicting file
+        target_path.write_text("original file")
+
+        # Create files that would conflict with the rename
+        (conflict_dir / "data_conflicted_file").write_text("conflict 1")
+        (conflict_dir / "data_conflicted_file_1").write_text("conflict 2")
+
+        # Try to create directory - should use data_conflicted_file_2
+        safe_mkdir(target_path, parents=True)
+
+        # Directory should now exist
+        assert target_path.is_dir()
+
+        # Original file should be renamed to data_conflicted_file_2
+        renamed_file = conflict_dir / "data_conflicted_file_2"
+        assert renamed_file.exists()
+        assert renamed_file.is_file()
+        assert renamed_file.read_text() == "original file"

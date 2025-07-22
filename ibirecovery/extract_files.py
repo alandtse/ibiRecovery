@@ -259,7 +259,7 @@ def copy_file_rsync(
         True if successful, False otherwise
     """
     try:
-        cmd = ["rsync", "-av"]
+        cmd = ["rsync", "-av", "--progress", "--human-readable"]
         if resume:
             cmd.append("--partial")
         cmd.extend([str(source), str(dest)])
@@ -714,7 +714,8 @@ def safe_mkdir(path: Path, parents: bool = False, exist_ok: bool = True):
 
     This function prevents FileExistsError when directories already exist from
     previous script runs (resume mode) or when multiple processes create the
-    same directory simultaneously.
+    same directory simultaneously. If a file exists with the same name as a
+    directory we need to create, it intelligently renames the file.
     """
     try:
         path.mkdir(parents=parents, exist_ok=exist_ok)
@@ -725,12 +726,37 @@ def safe_mkdir(path: Path, parents: bool = False, exist_ok: bool = True):
                 # Directory exists - this is fine for resume mode
                 pass
             else:
-                # A file exists with this name - this is a real conflict
-                print(
-                    f"Warning: Cannot create directory {path} - file with same name exists"
-                )
-                if not exist_ok:
-                    raise
+                # A file exists with this name - we need to create a directory here
+                # Intelligently rename the conflicting file
+                original_file = path
+
+                # Create a descriptive new name for the conflicting file
+                new_name = f"{original_file.name}_conflicted_file"
+                new_path = original_file.parent / new_name
+
+                # If that name also exists, add a counter
+                counter = 1
+                while new_path.exists():
+                    new_name = f"{original_file.name}_conflicted_file_{counter}"
+                    new_path = original_file.parent / new_name
+                    counter += 1
+
+                try:
+                    # Rename the conflicting file
+                    original_file.rename(new_path)
+                    print(
+                        f"📁 Resolved directory conflict: renamed file '{original_file.name}' to '{new_name}'"
+                    )
+
+                    # Now create the directory
+                    path.mkdir(parents=parents, exist_ok=exist_ok)
+
+                except OSError as rename_error:
+                    print(
+                        f"Warning: Could not resolve directory conflict for {path}: {rename_error}"
+                    )
+                    if not exist_ok:
+                        raise
         else:
             # FileExistsError but path doesn't exist - unusual race condition
             print(f"Warning: Unexpected FileExistsError for {path}: {e}")
