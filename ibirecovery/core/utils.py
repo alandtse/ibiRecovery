@@ -69,7 +69,7 @@ def find_source_file(
 
                     # Try direct path first
                     user_file_path = user_dir / file_name
-                    if user_file_path.exists():
+                    if user_file_path.exists() and user_file_path.is_file():
                         conn.close()
                         return user_file_path
 
@@ -123,7 +123,7 @@ def find_source_file(
     ]
 
     for path in possible_paths:
-        if path.exists():
+        if path.exists() and path.is_file():
             return path
 
     return None

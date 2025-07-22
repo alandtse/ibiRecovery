@@ -429,7 +429,7 @@ def copy_file_fallback(
                     set_file_metadata(dest, file_metadata)
                 return True
 
-        dest.parent.mkdir(parents=True, exist_ok=True)
+        safe_mkdir(dest.parent, parents=True)
         shutil.copy2(source, dest)
 
         # Set correct metadata timestamps if provided
@@ -616,7 +616,7 @@ def copy_file_with_dedup(
                 return True, "skipped"
 
         # Ensure destination directory exists
-        dest.parent.mkdir(parents=True, exist_ok=True)
+        safe_mkdir(dest.parent, parents=True)
 
         # Get source file stats - needed for both deduplication and copy operations
         source_stat = source.stat()
@@ -1991,7 +1991,7 @@ def extract_by_albums(
         print(f"Extracting album: {album_name} ({len(files)} files)")
 
         if copy_files:
-            album_dir.mkdir(parents=True, exist_ok=True)
+            safe_mkdir(album_dir, parents=True)
 
         # Progress bar for this album with size information
         album_size = album_sizes[album_name]
@@ -2404,7 +2404,7 @@ def reorganize_extraction(
 
             # Move if different
             if old_path != new_path:
-                new_path.parent.mkdir(parents=True, exist_ok=True)
+                safe_mkdir(new_path.parent, parents=True)
                 old_path.rename(new_path)
                 files_moved += 1
 
@@ -2436,7 +2436,7 @@ def reorganize_extraction(
 
             # Move if different
             if old_path != new_path:
-                new_path.parent.mkdir(parents=True, exist_ok=True)
+                safe_mkdir(new_path.parent, parents=True)
                 old_path.rename(new_path)
                 files_moved += 1
 
@@ -3055,7 +3055,7 @@ Advanced options:
         print()
 
     if not args.list_only and output_dir:
-        output_dir.mkdir(parents=True, exist_ok=True)
+        safe_mkdir(output_dir, parents=True)
 
     # Use merged database function to include backup database files
     if CORE_MODULES_AVAILABLE:
