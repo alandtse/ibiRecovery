@@ -7,7 +7,11 @@ from unittest.mock import patch
 
 import pytest
 
-from ibirecovery.core.database import detect_ibi_structure, get_merged_files_with_albums
+from ibirecovery.core.database import (
+    detect_ibi_structure,
+    get_all_files_with_albums,
+    get_merged_files_with_albums,
+)
 
 
 class TestDatabaseCompatibility:
@@ -433,3 +437,74 @@ class TestDatabaseCompatibility:
                 or "sql" in str(e).lower()
                 or "column" in str(e).lower()
             )
+
+    def test_directory_metadata_filtering(self, temp_dir):
+        """Test that directory metadata entries are filtered out during extraction."""
+        # Create modern database with mixed files and directory metadata
+        db_path = temp_dir / "modern.db"
+
+        files_data = [
+            # Regular file
+            {
+                "id": "file1",
+                "name": "photo.jpg",
+                "contentID": "content1",
+                "mimeType": "image/jpeg",
+                "size": 1000000,
+                "imageDate": 1640995200000,
+                "cTime": 1640995200000,
+            },
+            # Directory metadata entries (should be filtered out)
+            {
+                "id": "dir1",
+                "name": "Samsung SM-G960U Camera Backup",
+                "contentID": "ccpzskeo3lzjplaw7lipsoda",
+                "mimeType": "application/x.wd.dir",
+                "size": 0,
+                "imageDate": None,
+                "cTime": 1634887254000,
+            },
+            {
+                "id": "dir2",
+                "name": "auth0|5bb3b9d2f4cee6307c85560e",
+                "contentID": "4ub6bom4bzldfcjm2jugt2x7",
+                "mimeType": "application/x.wd.dir",
+                "size": 0,
+                "imageDate": None,
+                "cTime": 1634887300973,
+            },
+            # Another regular file
+            {
+                "id": "file2",
+                "name": "video.mp4",
+                "contentID": "content2",
+                "mimeType": "video/mp4",
+                "size": 5000000,
+                "videoDate": 1640995400000,
+                "cTime": 1640995400000,
+            },
+        ]
+        self.create_modern_database(db_path, files_data)
+
+        # Get files using our database function
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        files_with_albums, stats = get_all_files_with_albums(conn)
+        conn.close()
+
+        # Should only return the 2 actual files, not the 2 directory entries
+        assert len(files_with_albums) == 2
+        assert stats["total_files"] == 2
+
+        # Verify only actual files are returned
+        returned_mime_types = {item["file"]["mimeType"] for item in files_with_albums}
+        assert "application/x.wd.dir" not in returned_mime_types
+        assert "image/jpeg" in returned_mime_types
+        assert "video/mp4" in returned_mime_types
+
+        # Verify specific files are returned
+        file_names = {item["file"]["name"] for item in files_with_albums}
+        assert "photo.jpg" in file_names
+        assert "video.mp4" in file_names
+        assert "Samsung SM-G960U Camera Backup" not in file_names
+        assert "auth0|5bb3b9d2f4cee6307c85560e" not in file_names

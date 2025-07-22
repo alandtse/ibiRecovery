@@ -261,7 +261,14 @@ def copy_file_rsync(
     try:
         cmd = ["rsync", "-av", "--progress", "--human-readable"]
         if resume:
-            cmd.append("--partial")
+            # Resume mode optimizations for better performance
+            cmd.extend(
+                [
+                    "--partial",  # Resume partial transfers
+                    "--update",  # Only transfer newer files
+                    "--size-only",  # Use size comparison instead of checksum (much faster)
+                ]
+            )
         cmd.extend([str(source), str(dest)])
 
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
@@ -2850,7 +2857,7 @@ Advanced options:
         "--resume",
         action="store_true",
         default=True,
-        help="Resume interrupted transfers (default: enabled, use --no-resume to disable)",
+        help="Resume interrupted transfers with fast skip-checking (default: enabled, use --no-resume to disable)",
     )
     parser.add_argument(
         "--no-resume",

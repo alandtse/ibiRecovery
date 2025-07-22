@@ -158,7 +158,14 @@ def copy_file_rsync(
     try:
         cmd = ["rsync", "-av"]
         if resume:
-            cmd.append("--partial")
+            # Resume mode optimizations for better performance
+            cmd.extend(
+                [
+                    "--partial",  # Resume partial transfers
+                    "--update",  # Only transfer newer files
+                    "--size-only",  # Use size comparison instead of checksum (much faster)
+                ]
+            )
         cmd.extend([str(source), str(dest)])
 
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)

@@ -264,6 +264,7 @@ def get_all_files_with_albums(
                f.imageDate, f.videoDate, f.cTime, f.storageID
         FROM Files f
         WHERE f.contentID IS NOT NULL AND f.contentID != ''
+        AND f.mimeType != 'application/x.wd.dir'
         ORDER BY COALESCE(f.videoDate, f.imageDate, f.cTime)
         """
     else:
@@ -273,6 +274,7 @@ def get_all_files_with_albums(
                f.imageDate, f.videoDate, f.cTime, 'local' as storageID
         FROM Files f
         WHERE f.contentID IS NOT NULL AND f.contentID != ''
+        AND f.mimeType != 'application/x.wd.dir'
         ORDER BY COALESCE(f.videoDate, f.imageDate, f.cTime)
         """
 

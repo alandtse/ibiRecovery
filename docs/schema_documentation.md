@@ -143,6 +143,35 @@ CREATE TABLE Files(
 );
 ```
 
+#### Directory Metadata Entries
+
+**Important**: The Files table contains organizational metadata entries with `mimeType: 'application/x.wd.dir'` that represent directory structure rather than actual extractable files.
+
+**Types of Directory Entries**:
+
+- **User Account Boundaries**: Format `auth0|{userID}` representing individual users in multi-user systems
+- **Device Groupings**: Names like `Samsung SM-G960U Camera Backup`, `iPhone Camera Roll Backup` for device-specific uploads  
+- **System Containers**: `Trash` for deleted items, empty entries for organizational placeholders
+
+**Database Analysis Example**:
+```sql
+SELECT name, mimeType, contentID FROM Files WHERE mimeType = 'application/x.wd.dir';
+```
+
+Typical results (8 directory entries out of 9,434 total):
+- `Trash` (system container)
+- `auth0|5aa6ecdb83fef129ce546335` → maps to 613 actual files
+- `auth0|5bb3b9d2f4cee6307c85560e` → maps to 8,813 actual files
+- `Samsung SM-G960U Camera Backup` (device grouping)
+- `Google Pixel 2 Camera Backup` (device grouping)
+
+**Extraction Behavior**: Recovery tools should filter these entries using:
+```sql
+WHERE f.contentID IS NOT NULL AND f.contentID != '' AND f.mimeType != 'application/x.wd.dir'
+```
+
+This prevents confusing "Source file not found" warnings for organizational metadata that has no corresponding physical files.
+
 ### Filesystems Table (UserStorage Mappings)
 
 ```sql
