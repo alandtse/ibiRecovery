@@ -279,7 +279,9 @@ class MetadataExporter:
     def export_all_formats(self, data, output_dir, selected_formats=None):
         """Export data to all specified formats."""
         output_dir = Path(output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
+        from ..extract_files import safe_mkdir
+
+        safe_mkdir(output_dir, parents=True)
 
         formats_to_export = selected_formats or self.config["formats"].keys()
         exported_files = []

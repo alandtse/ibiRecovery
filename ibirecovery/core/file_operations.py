@@ -203,7 +203,9 @@ def copy_file_fallback(
                 return True
 
         # Create parent directory if needed
-        dest.parent.mkdir(parents=True, exist_ok=True)
+        from ..extract_files import safe_mkdir
+
+        safe_mkdir(dest.parent, parents=True)
 
         # Copy the file
         import shutil

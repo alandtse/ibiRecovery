@@ -137,7 +137,9 @@ def comprehensive_audit(
 
     # Save detailed audit report if requested
     if audit_report_dir:
-        audit_report_dir.mkdir(parents=True, exist_ok=True)
+        from ..extract_files import safe_mkdir
+
+        safe_mkdir(audit_report_dir, parents=True)
 
         # Detailed audit report
         audit_report = {

@@ -299,3 +299,39 @@ class TestRaceConditionHandling:
                 test_dir.mkdir(exist_ok=True)
 
         assert test_dir.exists()
+
+    def test_safe_mkdir_with_file_conflict(self, temp_dir):
+        """Test safe_mkdir when a file exists with the same name as the directory we want to create."""
+        from ibirecovery.extract_files import safe_mkdir
+
+        # Create a file with the name we want to use for a directory
+        conflict_path = temp_dir / "conflict_name"
+        conflict_path.write_text("I am a file, not a directory")
+
+        # Try to create a directory with the same name - should handle gracefully
+        safe_mkdir(conflict_path)
+
+        # File should still exist (not replaced by directory)
+        assert conflict_path.exists()
+        assert conflict_path.is_file()
+        assert not conflict_path.is_dir()
+
+    def test_safe_mkdir_exact_production_scenario(self, temp_dir):
+        """Test the exact scenario from production: safe_mkdir(dest_path.parent, parents=True)."""
+        from ibirecovery.extract_files import safe_mkdir
+
+        # Create the exact structure that would exist in production
+        output_dir = temp_dir / "Pictures" / "Unorganized" / "2023"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create the problematic directory that already exists
+        august_dir = output_dir / "08"
+        august_dir.mkdir(exist_ok=True)
+
+        # This simulates the exact call from the production error
+        # safe_mkdir(dest_path.parent, parents=True) where dest_path.parent is "08"
+        safe_mkdir(august_dir, parents=True)
+
+        # Should complete without error
+        assert august_dir.exists()
+        assert august_dir.is_dir()

@@ -718,14 +718,24 @@ def safe_mkdir(path: Path, parents: bool = False, exist_ok: bool = True):
     """
     try:
         path.mkdir(parents=parents, exist_ok=exist_ok)
-    except FileExistsError:
-        # Handle race condition where directory was created between exist check and mkdir
-        if path.is_dir():
-            # Directory exists and is indeed a directory - this is fine
-            pass
+    except FileExistsError as e:
+        # Handle case where path exists - could be file or directory
+        if path.exists():
+            if path.is_dir():
+                # Directory exists - this is fine for resume mode
+                pass
+            else:
+                # A file exists with this name - this is a real conflict
+                print(
+                    f"Warning: Cannot create directory {path} - file with same name exists"
+                )
+                if not exist_ok:
+                    raise
         else:
-            # Path exists but is not a directory - this is an actual error
-            raise
+            # FileExistsError but path doesn't exist - unusual race condition
+            print(f"Warning: Unexpected FileExistsError for {path}: {e}")
+            if not exist_ok:
+                raise
     except PermissionError as e:
         print(f"Warning: Permission denied creating directory {path}: {e}")
         # Don't re-raise - let the calling code handle missing directory
@@ -1059,7 +1069,7 @@ def comprehensive_audit(
 
     # Generate detailed reports if requested
     if audit_report_dir:
-        audit_report_dir.mkdir(parents=True, exist_ok=True)
+        safe_mkdir(audit_report_dir, parents=True)
 
         # JSON report
         audit_report = {
@@ -1813,7 +1823,7 @@ class MetadataExporter:
 
     def export_all_formats(self, data, output_dir, selected_formats=None):
         """Export data in all configured formats."""
-        output_dir.mkdir(parents=True, exist_ok=True)
+        safe_mkdir(output_dir, parents=True)
         exported_files = []
 
         formats_to_export = selected_formats or self.config["formats"].keys()
